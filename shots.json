@@ -2,5 +2,5 @@
   { "name": "1-cover.jpg", "query": "?shot=cover&layout=hero&grade=vice-sunset&size=1920x1080&export=1", "w": 1280, "h": 720 },
   { "name": "2-editor.jpg", "query": "?shot=editor", "w": 1280, "h": 800 },
   { "name": "3-cover.jpg", "query": "?shot=cover&layout=diagonal&grade=neon-night&size=1080x1350&export=1", "w": 1024, "h": 1280 },
-  { "name": "4-variant.jpg", "query": "?shot=cover&layout=nine&grade=golden-hour&size=1080x1080&export=1", "w": 1080, "h": 1080 }
+  { "name": "4-variant.jpg", "query": "?shot=cover&layout=nine-panels&grade=vice-sunset&size=1080x1080&export=1", "w": 1080, "h": 1080 }
 ]

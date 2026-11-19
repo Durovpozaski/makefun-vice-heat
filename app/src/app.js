@@ -1,993 +1,702 @@
-'use strict';
-/* VICE HEAT Cover Studio v4 — color pass.
-   Gold title (cream -> gold yellow -> orange -> pink), posterize mosaic grade
-   (flat warm color blocks + fine grain, blues shifted to purple/magenta),
-   thin cream gutters + border, hero with a big sunset sky.
-   Everything original: no Rockstar logo, artwork or fonts. */
-var SAMPLES = ['samples/photo1.jpg', 'samples/photo2.jpg', 'samples/photo3.jpg',
-  'samples/photo4.jpg', 'samples/photo5.jpg', 'samples/photo6.jpg',
-  'samples/photo7.jpg', 'samples/photo8.jpg'];
-var FACE_DEFAULTS = [
-  { x: 0.42, y: 0.24, w: 0.22, h: 0.30 },
-  { x: 0.52, y: 0.20, w: 0.30, h: 0.34 },
-  null, null, null, null, null, null
-];
-var LABELS = [
-  { place: 'OCEAN DRIVE', sub: '6:42 PM — LOOKING FOR TROUBLE' },
-  { place: 'PIER 26', sub: '5:30 AM — GONE FISHING' },
-  { place: 'PALM BOULEVARD', sub: '9:15 PM — LIGHTS OUT' },
-  { place: 'MARINA DEL SOL', sub: '7:40 PM — NO WITNESSES' },
-  { place: 'INTERSTATE 6', sub: '11:58 PM — FULL THROTTLE' },
-  { place: 'SUNSET HEIGHTS', sub: '8:30 PM — BIG MONEY' },
-  { place: 'VICE PETRO', sub: '2:12 AM — RUNNING ON EMPTY' },
-  { place: 'TOWER 2', sub: '6:10 PM — LAST SWIM' }
-];
-function P(x, y, w, h, photo, label) { return { x: x, y: y, w: w, h: h, photo: photo, label: label }; }
-var LAYOUTS = {
-  'Hero': [
-    P(0.000, 0, 0.555, 1.00, 0, 0),
-    P(0.560, 0, 0.215, 0.30, 1, 1),
-    P(0.780, 0, 0.220, 0.30, 5, 5),
-    P(0.560, 0.305, 0.440, 0.315, 6, 6),
-    P(0.560, 0.625, 0.215, 0.375, 2, 2),
-    P(0.780, 0.625, 0.220, 0.375, 4, 4)
-  ],
-  'Comic': [
-    P(0.000, 0, 0.450, 0.62, 1, 1),
-    P(0.455, 0, 0.545, 0.30, 0, 0),
-    P(0.455, 0.305, 0.545, 0.315, 6, 6),
-    P(0.000, 0.625, 0.330, 0.375, 3, 3),
-    P(0.335, 0.625, 0.330, 0.375, 5, 5),
-    P(0.670, 0.625, 0.330, 0.375, 2, 2)
-  ],
-  '9 Panels': [
-    P(0.000, 0, 0.330, 0.330, 0, 0), P(0.335, 0, 0.330, 0.330, 1, 1), P(0.670, 0, 0.330, 0.330, 2, 2),
-    P(0.000, 0.335, 0.330, 0.330, 3, 3), P(0.335, 0.335, 0.330, 0.330, 4, 4), P(0.670, 0.335, 0.330, 0.330, 5, 5),
-    P(0.000, 0.670, 0.330, 0.330, 6, 6), P(0.335, 0.670, 0.330, 0.330, 7, 7), P(0.670, 0.670, 0.330, 0.330, 3, 3)
-  ],
-  '1 Panel': [P(0, 0, 1, 1, 0, 0)],
-  '2 Panels': [P(0, 0, 0.4975, 1, 0, 0), P(0.5025, 0, 0.4975, 1, 1, 1)],
-  '3 Panels': [
-    P(0.000, 0, 0.500, 1.00, 0, 0),
-    P(0.505, 0, 0.495, 0.4975, 1, 1),
-    P(0.505, 0.5025, 0.495, 0.4975, 6, 6)
-  ],
-  '4 Panels': [
-    P(0.000, 0, 0.4975, 0.4975, 0, 0), P(0.5025, 0, 0.4975, 0.4975, 1, 1),
-    P(0.000, 0.5025, 0.4975, 0.4975, 6, 6), P(0.5025, 0.5025, 0.4975, 0.4975, 4, 4)
-  ],
-  'Diagonal Split': [
-    P(0.000, 0, 0.620, 0.62, 0, 0),
-    P(0.440, 0, 0.560, 0.62, 1, 1),
-    P(0.000, 0.625, 0.4975, 0.375, 3, 3),
-    P(0.5025, 0.625, 0.4975, 0.375, 6, 6)
-  ],
-  'Hero + Strip': [
-    P(0, 0, 1, 0.62, 0, 0),
-    P(0.000, 0.625, 0.330, 0.375, 2, 2),
-    P(0.335, 0.625, 0.330, 0.375, 6, 6),
-    P(0.670, 0.625, 0.330, 0.375, 4, 4)
-  ]
-};
-var LAYOUT_NAMES = Object.keys(LAYOUTS);
-var GRADES = {
-  'Miami Sunset': { painterly: 35, ink: 22, halftone: 8, skin: 70, sat: 1.24, warm: 0.85, blueShift: 0.75 },
-  'Neon Night': { painterly: 25, ink: 30, halftone: 15, skin: 70, sat: 1.20, warm: 0.55, blueShift: 0.55 },
-  'Golden Hour': { painterly: 20, ink: 15, halftone: 5, skin: 70, sat: 1.28, warm: 1.00, blueShift: 0.80 },
-  'Duotone Pink/Teal': { painterly: 40, ink: 35, halftone: 25, skin: 60, sat: 1.30, warm: 0.60, blueShift: 0.65 },
-  'Comic Ink': { painterly: 70, ink: 55, halftone: 30, skin: 70, sat: 1.35, warm: 0.70, blueShift: 0.70 },
-  'Natural': { painterly: 5, ink: 5, halftone: 0, skin: 80, sat: 1.10, warm: 0.35, blueShift: 0.30 },
-  'Palm Noir': { painterly: 45, ink: 45, halftone: 20, skin: 60, sat: 1.15, warm: 0.45, blueShift: 0.50 }
-};
-var GRADE_NAMES = Object.keys(GRADES);
-var SIZES = { '1920x1080': [1920, 1080], '1080x1350': [1080, 1350], '1080x1080': [1080, 1080] };
-var state = {
-  layout: 'Hero', grade: 'Miami Sunset', size: '1920x1080',
-  title: 'VICE HEAT', subtitle: 'Leonida',
-  wanted: true, stars: 5, vol: 'VOL. 06', est: true, faceSafe: true,
-  selected: 0, surpriseIdx: 0,
-  sliders: { painterly: 35, ink: 22, halftone: 8, skin: 70 },
-  panels: []
-};
-var PHOTOS = [];
-function $(id) { return document.getElementById(id); }
-function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
-function loadImage(src) {
-  return new Promise(function (resolve, reject) {
-    var img = new Image();
-    img.onload = function () { resolve(img); };
-    img.onerror = function () { reject(new Error('cannot load ' + src)); };
-    img.src = src;
-  });
-}
-/* Deterministic integer hash -> [0,1): the grain must be identical on every run. */
-function hashNoise(x, y, seed) {
-  var h = (x * 374761393 + y * 668265263 + seed * 974634) >>> 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
-  return (((h ^ (h >>> 16)) >>> 0) / 4294967295);
-}
-function buildPanels() {
-  var defs = LAYOUTS[state.layout];
-  state.panels = defs.map(function (d) {
-    var lab = LABELS[d.label];
-    return {
-      photo: d.photo, zoom: 1, cx: 0.5, cy: 0.5, panned: false,
-      label: { place: lab.place, sub: lab.sub },
-      def: d
-    };
-  });
-  state.selected = 0;
-}
-/* Cover-fit source rect for one panel, with face bias: when the photo has a
-   face and the user has not panned, the face lands in the upper third. */
-function computeCrop(img, panel, pw, ph) {
-  var iw = img.naturalWidth, ih = img.naturalHeight;
-  var z = panel.zoom;
-  var sw = iw, sh = iw * ph / pw;
-  if (sh > ih) { sh = ih; sw = ih * pw / ph; }
-  sw /= z; sh /= z;
-  var cx = panel.cx * iw, cy = panel.cy * ih;
-  var photo = PHOTOS[panel.photo];
-  if (photo && photo.face && !panel.panned) {
-    cx = photo.face.x * iw;
-    cy = photo.face.y * ih;
-  }
-  var sx = clamp(cx - sw / 2, 0, Math.max(0, iw - sw));
-  var sy = clamp(cy - sh / 2, 0, Math.max(0, ih - sh));
-  if (photo && photo.face && !panel.panned) {
-    sy = clamp(photo.face.y * ih - 0.30 * sh, 0, Math.max(0, ih - sh));
-    sx = clamp(photo.face.x * iw - 0.50 * sw, 0, Math.max(0, iw - sw));
-  }
-  return { sx: sx, sy: sy, sw: sw, sh: sh, iw: iw, ih: ih };
-}
+// VICE HEAT Cover Studio — a GTA 6 style poster cover maker that runs offline.
+// One canvas renderer draws every cover: full-bleed photos, a huge italic gold
+// title over the lower photos, story labels, WANTED badge, starburst, stickers
+// and a thin bottom strip with its own barcode zone. The editor beside the
+// canvas picks layouts and grades, tunes the grade, edits the words, moves the
+// face box and exports PNGs in the three post sizes. Everything is local:
+// the eight photos and four fonts live under app/, no network is ever used.
+// Rendering is deterministic: grain comes from a fixed-seed generator, never
+// from Math.random or the clock, so the same state always paints the same cover.
 
-/* Render one panel's photo through the grade, on its own canvas.
-   Posterize breaks the photo into flat warm color blocks (the mosaic look);
-   saturation is boosted; blues are bent toward purple/magenta so sea, sky
-   and night panels stay warm; ink darkens edges; halftone dots and fine
-   deterministic grain finish the print look. Skin inside the face box is
-   blended back toward the original photo. */
-function gradePanel(img, panel, pw, ph, seed) {
-  var c = document.createElement('canvas');
-  c.width = Math.max(2, Math.round(pw));
-  c.height = Math.max(2, Math.round(ph));
-  var x = c.getContext('2d');
-  var crop = computeCrop(img, panel, pw, ph);
-  x.drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, c.width, c.height);
-  var g = currentGrade();
-  var imgData = x.getImageData(0, 0, c.width, c.height);
-  var d = imgData.data;
-  var w = c.width, h = c.height, n = w * h;
-  var lum = new Float32Array(n);
-  var i, r, gg, b, l;
-  for (i = 0; i < n; i++) {
-    r = d[i * 4]; gg = d[i * 4 + 1]; b = d[i * 4 + 2];
-    lum[i] = 0.299 * r + 0.587 * gg + 0.114 * b;
-  }
-  var levels = Math.max(3, Math.round(9 - g.painterly / 14));
-  var step = 256 / levels;
-  var pAmt = (g.painterly / 100) * 0.9;
-  var inkAmt = g.ink / 100;
-  var htAmt = g.halftone / 100;
-  var skinAmt = state.faceSafe ? (g.skin / 100) : 0;
-  var sat = g.sat, warm = g.warm, blueShift = g.blueShift;
-  var face = null;
-  var photo = PHOTOS[panel.photo];
-  if (photo && photo.face && state.faceSafe) {
-    var fx = (photo.face.x * crop.iw - crop.sx) / crop.sw;
-    var fy = (photo.face.y * crop.ih - crop.sy) / crop.sh;
-    var fw = (photo.face.w * crop.iw) / crop.sw;
-    var fh = (photo.face.h * crop.ih) / crop.sh;
-    face = { cx: fx * w, cy: fy * h, rx: fw * w / 2, ry: fh * h / 2 };
-  }
-  for (var y = 0; y < h; y++) {
-    for (var xx = 0; xx < w; xx++) {
-      i = y * w + xx;
-      var o = i * 4;
-      var or = d[o], og = d[o + 1], ob = d[o + 2];
-      l = lum[i];
-      r = or; gg = og; b = ob;
-      /* saturation boost */
-      r = l + (r - l) * sat; gg = l + (gg - l) * sat; b = l + (b - l) * sat;
-      /* warm wash: lift reds, pull blues down, warm tint */
-      r = r * (1 + 0.10 * warm) + 8 * warm;
-      gg = gg * (1 + 0.02 * warm) + 3 * warm;
-      b = b * (1 - 0.12 * warm) - 6 * warm;
-      /* blues bend toward purple/magenta */
-      if (b > r && b > gg) {
-        var mix = (b - Math.max(r, gg)) / 255 * blueShift;
-        r += mix * 120; gg += mix * 25; b -= mix * 55;
-      }
-      /* posterize into flat color blocks */
-      var qr = Math.floor(r / step) * step + step / 2;
-      var qg = Math.floor(gg / step) * step + step / 2;
-      var qb = Math.floor(b / step) * step + step / 2;
-      r = r * (1 - pAmt) + qr * pAmt;
-      gg = gg * (1 - pAmt) + qg * pAmt;
-      b = b * (1 - pAmt) + qb * pAmt;
-      /* ink contours: Sobel edge darkening */
-      if (inkAmt > 0.01 && xx > 0 && xx < w - 1 && y > 0 && y < h - 1) {
-        var gx = (lum[i - w - 1] + 2 * lum[i - 1] + lum[i + w - 1]) -
-          (lum[i - w + 1] + 2 * lum[i + 1] + lum[i + w + 1]);
-        var gy = (lum[i - w - 1] + 2 * lum[i - w] + lum[i - w + 1]) -
-          (lum[i + w - 1] + 2 * lum[i + w] + lum[i + w + 1]);
-        var edge = Math.min(1, Math.sqrt(gx * gx + gy * gy) / 1020);
-        var dark = 1 - inkAmt * edge * 0.85;
-        r *= dark; gg *= dark; b *= dark;
-      }
-      /* halftone dots: darker areas get bigger dots */
-      if (htAmt > 0.01) {
-        var dx = (xx % 7) - 3, dy = (y % 7) - 3;
-        var dist2 = dx * dx + dy * dy;
-        var thr = (255 - l) / 255 * 9;
-        if (dist2 < thr) { r *= (1 - htAmt * 0.35); gg *= (1 - htAmt * 0.35); b *= (1 - htAmt * 0.35); }
-      }
-      /* fine deterministic grain */
-      var nz = (hashNoise(xx, y, seed) - 0.5) * 12;
-      r += nz; gg += nz; b += nz;
-      /* face-safe: blend skin back toward the original photo */
-      if (face && skinAmt > 0) {
-        var ex = (xx - face.cx) / face.rx, ey = (y - face.cy) / face.ry;
-        if (ex * ex + ey * ey < 1) {
-          r = r * (1 - skinAmt) + or * skinAmt;
-          gg = gg * (1 - skinAmt) + og * skinAmt;
-          b = b * (1 - skinAmt) + ob * skinAmt;
-        }
-      }
-      d[o] = clamp(r, 0, 255); d[o + 1] = clamp(gg, 0, 255); d[o + 2] = clamp(b, 0, 255);
-    }
-  }
-  x.putImageData(imgData, 0, 0);
-  return c;
-}
-function currentGrade() {
-  var base = GRADES[state.grade];
-  return {
-    painterly: state.sliders.painterly, ink: state.sliders.ink,
-    halftone: state.sliders.halftone, skin: state.sliders.skin,
-    sat: base.sat, warm: base.warm, blueShift: base.blueShift
+const PHOTOS = [
+  { file: 'photo1.jpg', label: 'OCEAN DRIVE', sub: '6:42 PM', faceY: 0.22 },
+  { file: 'photo2.jpg', label: 'THE PIER', sub: 'FIRST LIGHT', faceY: 0.20 },
+  { file: 'photo3.jpg', label: 'COLLINS AVE', sub: 'AFTER RAIN', faceY: 0.42 },
+  { file: 'photo4.jpg', label: 'COLONY HOTEL', sub: 'OCEAN DR', faceY: 0.45 },
+  { file: 'photo5.jpg', label: 'BISCAYNE BAY', sub: 'FULL THROTTLE', faceY: 0.42 },
+  { file: 'photo6.jpg', label: 'DOWNTOWN', sub: 'MAGIC HOUR', faceY: 0.45 },
+  { file: 'photo7.jpg', label: 'RETRO FUEL', sub: 'OPEN 24 HOURS', faceY: 0.30 },
+  { file: 'photo8.jpg', label: 'TOWER 12', sub: 'MIAMI BEACH', faceY: 0.45 },
+];
+
+const GRADES = {
+  'vice-sunset': { name: 'Miami Sunset', posterize: 7, painterly: 35, ink: 22, halftone: 8, keepSkin: 70, warm: 65, blueShift: 80, sat: 1.14, contrast: 1.06, bright: 1.02 },
+  'neon-night': { name: 'Neon Night', posterize: 6, painterly: 25, ink: 30, halftone: 14, keepSkin: 40, warm: 30, blueShift: 95, sat: 1.25, contrast: 1.12, bright: 0.98 },
+  'comic-ink': { name: 'Comic Ink', posterize: 5, painterly: 70, ink: 65, halftone: 30, keepSkin: 50, warm: 45, blueShift: 70, sat: 1.18, contrast: 1.18, bright: 1.0 },
+  'golden-hour': { name: 'Golden Hour', posterize: 8, painterly: 20, ink: 10, halftone: 0, keepSkin: 80, warm: 90, blueShift: 60, sat: 1.1, contrast: 1.04, bright: 1.05 },
+  'pastel-dawn': { name: 'Pastel Dawn', posterize: 9, painterly: 15, ink: 8, halftone: 0, keepSkin: 85, warm: 40, blueShift: 45, sat: 0.95, contrast: 0.98, bright: 1.08 },
+  'noir-vice': { name: 'Noir Vice', posterize: 6, painterly: 30, ink: 45, halftone: 18, keepSkin: 30, warm: 20, blueShift: 90, sat: 0.85, contrast: 1.22, bright: 0.92 },
+  'candy-pop': { name: 'Candy Pop', posterize: 7, painterly: 20, ink: 15, halftone: 10, keepSkin: 60, warm: 50, blueShift: 65, sat: 1.35, contrast: 1.1, bright: 1.03 },
+};
+
+const LAYOUTS = {
+  hero: { name: 'Hero Key Art', panels: [{ p: 0, x: 0, y: 0, w: 1, h: 0.93 }] },
+  diagonal: {
+    name: 'Diagonal Split',
+    panels: [
+      { p: 0, x: 0, y: 0, w: 1, h: 0.93, clip: [[0, 0], [1, 0], [1, 0.58], [0, 0.38]] },
+      { p: 6, x: 0, y: 0, w: 1, h: 0.93, clip: [[0, 0.38], [1, 0.58], [1, 0.93], [0, 0.93]] },
+    ],
+  },
+  'nine-panels': {
+    name: 'Nine Panels',
+    panels: [
+      { p: 0, x: 0, y: 0, w: 1 / 3, h: 0.31 }, { p: 2, x: 1 / 3, y: 0, w: 1 / 3, h: 0.31 }, { p: 1, x: 2 / 3, y: 0, w: 1 / 3, h: 0.31 },
+      { p: 3, x: 0, y: 0.31, w: 1 / 3, h: 0.31 }, { card: true, x: 1 / 3, y: 0.31, w: 1 / 3, h: 0.31 }, { p: 4, x: 2 / 3, y: 0.31, w: 1 / 3, h: 0.31 },
+      { p: 5, x: 0, y: 0.62, w: 1 / 3, h: 0.31 }, { p: 7, x: 1 / 3, y: 0.62, w: 1 / 3, h: 0.31 }, { p: 6, x: 2 / 3, y: 0.62, w: 1 / 3, h: 0.31 },
+    ],
+  },
+  duo: { name: 'Duo Split', panels: [{ p: 0, x: 0, y: 0, w: 0.5, h: 0.93 }, { p: 1, x: 0.5, y: 0, w: 0.5, h: 0.93 }] },
+  triptych: { name: 'Triptych', panels: [{ p: 2, x: 0, y: 0, w: 1 / 3, h: 0.93 }, { p: 0, x: 1 / 3, y: 0, w: 1 / 3, h: 0.93 }, { p: 5, x: 2 / 3, y: 0, w: 1 / 3, h: 0.93 }] },
+  strip: {
+    name: 'Skyline Strip',
+    panels: [
+      { p: 5, x: 0, y: 0, w: 1, h: 0.6 },
+      { p: 1, x: 0, y: 0.6, w: 1 / 3, h: 0.33 }, { p: 4, x: 1 / 3, y: 0.6, w: 1 / 3, h: 0.33 }, { p: 6, x: 2 / 3, y: 0.6, w: 1 / 3, h: 0.33 },
+    ],
+  },
+  quad: {
+    name: 'Quad',
+    panels: [
+      { p: 0, x: 0, y: 0, w: 0.5, h: 0.465 }, { p: 2, x: 0.5, y: 0, w: 0.5, h: 0.465 },
+      { p: 3, x: 0, y: 0.465, w: 0.5, h: 0.465 }, { p: 7, x: 0.5, y: 0.465, w: 0.5, h: 0.465 },
+    ],
+  },
+  mosaic: {
+    name: 'Mosaic',
+    panels: [
+      { p: 0, x: 0, y: 0, w: 0.6, h: 0.93 },
+      { p: 2, x: 0.6, y: 0, w: 0.4, h: 0.465 }, { p: 4, x: 0.6, y: 0.465, w: 0.4, h: 0.465 },
+    ],
+  },
+  coast: {
+    name: 'Coast Line',
+    panels: [
+      { p: 5, x: 0, y: 0, w: 1, h: 0.55 },
+      { p: 7, x: 0, y: 0.55, w: 1 / 3, h: 0.38 }, { p: 3, x: 1 / 3, y: 0.55, w: 1 / 3, h: 0.38 }, { p: 1, x: 2 / 3, y: 0.55, w: 1 / 3, h: 0.38 },
+    ],
+  },
+};
+
+const SURPRISES = [
+  { layout: 'diagonal', grade: 'neon-night', title: 'VICE HEAT', script: 'Leonida', quote: 'THE CITY NEVER SLEEPS.', tagline: 'EVERY SUNSET HAS A PRICE.', place: 'LEONIDA — VICE CITY' },
+  { layout: 'nine-panels', grade: 'comic-ink', title: 'VICE HEAT', script: 'Leonida', quote: 'WANTED IN EVERY DISTRICT.', tagline: 'RUN THE NIGHT.', place: 'VICE CITY — EST. 2026' },
+  { layout: 'coast', grade: 'golden-hour', title: 'VICE HEAT', script: 'Leonida', quote: 'GOLD ON THE WATER.', tagline: 'CHASE THE LAST LIGHT.', place: 'BISCAYNE BAY — FLORIDA' },
+  { layout: 'mosaic', grade: 'candy-pop', title: 'VICE HEAT', script: 'Leonida', quote: 'TOO MUCH IS NEVER ENOUGH.', tagline: 'TURN IT UP.', place: 'OCEAN DRIVE — MIAMI' },
+  { layout: 'triptych', grade: 'noir-vice', title: 'VICE HEAT', script: 'Leonida', quote: 'NOBODY LEAVES CLEAN.', tagline: 'TRUST NO SUNSET.', place: 'LEONIDA — AFTER DARK' },
+  { layout: 'hero', grade: 'pastel-dawn', title: 'VICE HEAT', script: 'Leonida', quote: 'MORNING AFTER THE HEAT.', tagline: 'NEW DAY. SAME FIRE.', place: 'MIAMI BEACH — DAWN' },
+];
+
+const DEFAULTS = {
+  layout: 'hero', grade: 'vice-sunset',
+  title: 'VICE HEAT', script: 'Leonida',
+  quote: 'THE CITY NEVER LOOKED THIS GOOD.',
+  tagline: 'EVERY SUNSET HAS A PRICE.', place: 'LEONIDA — VICE CITY',
+  wanted: true, faceShift: 0, surprise: 0,
+};
+
+const state = { ...DEFAULTS, painterly: null, ink: null, halftone: null, keepSkin: null };
+
+const clamp = (v, lo = 0, hi = 255) => (v < lo ? lo : v > hi ? hi : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// A tiny deterministic generator: the same seed always yields the same grain.
+function seeded(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
   };
 }
 
-function roundRect(x, X, Y, W, H, R) {
-  x.beginPath();
-  x.moveTo(X + R, Y);
-  x.arcTo(X + W, Y, X + W, Y + H, R);
-  x.arcTo(X + W, Y + H, X, Y + H, R);
-  x.arcTo(X, Y + H, X, Y, R);
-  x.arcTo(X, Y, X + W, Y, R);
-  x.closePath();
-}
-function drawPalm(x, px, py, s, color) {
-  x.save();
-  x.fillStyle = color;
-  x.strokeStyle = color;
-  x.lineWidth = Math.max(1.5, s * 0.03);
-  x.beginPath();
-  x.moveTo(px, py);
-  x.quadraticCurveTo(px + s * 0.08, py - s * 0.55, px + s * 0.16, py - s * 0.95);
-  x.lineTo(px + s * 0.20, py - s * 0.95);
-  x.quadraticCurveTo(px + s * 0.12, py - s * 0.55, px + s * 0.05, py);
-  x.closePath();
-  x.fill();
-  var topX = px + s * 0.18, topY = py - s * 0.95;
-  for (var k = -2; k <= 2; k++) {
-    x.beginPath();
-    x.moveTo(topX, topY);
-    x.quadraticCurveTo(topX + k * s * 0.22, topY - s * 0.28, topX + k * s * 0.42, topY + s * 0.10 - Math.abs(k) * s * 0.06);
-    x.quadraticCurveTo(topX + k * s * 0.24, topY - s * 0.10, topX, topY);
-    x.closePath();
-    x.fill();
+const imageCache = new Map();
+function loadPhoto(index) {
+  if (!imageCache.has(index)) {
+    const img = new Image();
+    img.src = `samples/${PHOTOS[index].file}`;
+    imageCache.set(index, img.decode().then(() => img));
   }
-  x.restore();
-}
-function drawStarburst(x, cx, cy, r) {
-  x.save();
-  x.translate(cx, cy);
-  x.beginPath();
-  var spikes = 14;
-  for (var i = 0; i < spikes * 2; i++) {
-    var rr = (i % 2 === 0) ? r : r * 0.78;
-    var a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2;
-    if (i === 0) x.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
-    else x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-  }
-  x.closePath();
-  x.fillStyle = '#FF4D8D';
-  x.fill();
-  x.lineWidth = Math.max(2, r * 0.05);
-  x.strokeStyle = '#2A0A2E';
-  x.stroke();
-  x.beginPath();
-  x.arc(0, 0, r * 0.68, 0, Math.PI * 2);
-  x.fillStyle = '#FFF3C4';
-  x.fill();
-  x.lineWidth = Math.max(1.5, r * 0.03);
-  x.strokeStyle = '#2A0A2E';
-  x.stroke();
-  x.fillStyle = '#2A0A2E';
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.font = Math.round(r * 0.16) + 'px SansBold, sans-serif';
-  x.fillText('★ ★ ★', 0, -r * 0.34);
-  x.font = '900 ' + Math.round(r * 0.24) + 'px "DisplayBlack", sans-serif';
-  x.fillText('ORIGINAL', 0, -r * 0.02);
-  x.font = Math.round(r * 0.17) + 'px SansBold, sans-serif';
-  x.fillText('COVER ART', 0, r * 0.30);
-  x.restore();
-}
-function drawTitle(x, W, H, titleTop, titleBottom) {
-  var text = state.title.toUpperCase();
-  var cx = W / 2;
-  var cy = (titleTop + titleBottom) / 2;
-  var fs = (titleBottom - titleTop) * 0.92;
-  x.save();
-  x.font = '900 ' + Math.round(fs) + 'px "DisplayCond", sans-serif';
-  var maxW = W * 0.96;
-  var w = 0;
-  for (var i = 0; i < text.length; i++) w += x.measureText(text[i]).width;
-  var tracking = fs * 0.03;
-  var total = w + tracking * (text.length - 1);
-  if (total > maxW) {
-    fs = fs * maxW / total;
-    x.font = '900 ' + Math.round(fs) + 'px "DisplayCond", sans-serif';
-    w = 0;
-    for (var j = 0; j < text.length; j++) w += x.measureText(text[j]).width;
-    tracking = fs * 0.03;
-    total = w + tracking * (text.length - 1);
-  }
-  x.translate(cx, cy);
-  x.transform(1, 0, -0.22, 1, 0, 0);
-  var grad = x.createLinearGradient(0, -fs * 0.5, 0, fs * 0.5);
-  grad.addColorStop(0.00, '#FFF7D6');
-  grad.addColorStop(0.28, '#FFE9A8');
-  grad.addColorStop(0.45, '#FFD23F');
-  grad.addColorStop(0.62, '#FF9A2E');
-  grad.addColorStop(0.82, '#FF6B4A');
-  grad.addColorStop(1.00, '#FF4D8D');
-  x.textAlign = 'left';
-  x.textBaseline = 'middle';
-  x.lineJoin = 'round';
-  var passes = [
-    { dx: fs * 0.055, dy: fs * 0.085, fill: '#4A1150', stroke: null },
-    { dx: fs * 0.028, dy: fs * 0.042, fill: '#7B2D8B', stroke: null },
-    { dx: 0, dy: 0, fill: null, stroke: '#2A0A2E', lw: fs * 0.05 },
-    { dx: 0, dy: 0, fill: grad, stroke: null }
-  ];
-  for (var p = 0; p < passes.length; p++) {
-    var pass = passes[p];
-    var px = -total / 2 + pass.dx;
-    var py = pass.dy;
-    for (var k = 0; k < text.length; k++) {
-      var ch = text[k];
-      var cw = x.measureText(ch).width;
-      if (pass.stroke) {
-        x.lineWidth = pass.lw;
-        x.strokeStyle = pass.stroke;
-        x.strokeText(ch, px, py);
-      } else {
-        x.fillStyle = pass.fill;
-        x.fillText(ch, px, py);
-      }
-      px += cw + tracking;
-    }
-  }
-  x.restore();
-  return { cx: cx, cy: cy, fs: fs, total: total, top: titleTop, bottom: titleBottom };
-}
-function drawScript(x, W, H, titleInfo) {
-  var fs = titleInfo.fs * 0.40;
-  x.save();
-  x.font = Math.round(fs) + 'px Script, cursive';
-  var sw = x.measureText(state.subtitle).width;
-  var sx = Math.min(titleInfo.cx + titleInfo.total / 2 - sw * 0.42, W - sw - 8);
-  var sy = titleInfo.bottom - titleInfo.fs * 0.10;
-  x.translate(sx, sy);
-  x.rotate(-0.10);
-  x.shadowColor = '#FF9BD8';
-  x.shadowBlur = fs * 0.25;
-  x.fillStyle = '#FF5EC4';
-  x.textAlign = 'left';
-  x.textBaseline = 'middle';
-  x.fillText(state.subtitle, 0, 0);
-  x.restore();
-}
-function drawBarcode(x, bx, by, bw, bh) {
-  var seed = 7;
-  var px = bx;
-  x.fillStyle = '#F2E9FF';
-  while (px < bx + bw - 2) {
-    var wbar = 1 + Math.floor(hashNoise(Math.round(px), 3, seed) * 4);
-    if (hashNoise(Math.round(px), 9, seed) > 0.45) x.fillRect(px, by, wbar, bh);
-    px += wbar + 1 + Math.floor(hashNoise(Math.round(px), 5, seed) * 3);
-  }
-}
-function renderCover(canvas, W, H) {
-  var x = canvas.getContext('2d');
-  canvas.width = W;
-  canvas.height = H;
-  x.fillStyle = '#F3E6C2';
-  x.fillRect(0, 0, W, H);
-  var m = Math.round(W * 0.008);
-  var g = Math.max(2, Math.round(W * 0.004));
-  var stripTop = H * 0.885;
-  var footerTop = H * 0.955;
-  var ax = m, ay = m, aw = W - 2 * m, ah = stripTop - m;
-  var titleTop = H * 0.58, titleBottom = stripTop;
-  var defs = LAYOUTS[state.layout];
-  var rects = [];
-  for (var i = 0; i < defs.length; i++) {
-    var d = defs[i];
-    var panel = state.panels[i];
-    var px = ax + d.x * aw + g / 2;
-    var py = ay + d.y * ah + g / 2;
-    var pw = d.w * aw - g;
-    var ph = d.h * ah - g;
-    rects.push({ x: px, y: py, w: pw, h: ph });
-    var photo = PHOTOS[panel.photo];
-    if (photo && photo.img) {
-      var graded = gradePanel(photo.img, panel, pw, ph, i * 101 + 7);
-      x.drawImage(graded, px, py, pw, ph);
-    } else {
-      x.fillStyle = '#2A0A2E';
-      x.fillRect(px, py, pw, ph);
-    }
-  }
-  /* quote bar, measured first so labels can dodge it */
-  x.font = Math.round(H * 0.020) + 'px SansBold, sans-serif';
-  var quoteText = '★★★★★  PURE ADRENALINE IN EVERY FRAME';
-  var quoteW = x.measureText(quoteText).width + W * 0.03;
-  var quoteH = H * 0.034;
-  var quoteRect = { x: W * 0.03, y: titleTop - H * 0.052, w: quoteW, h: quoteH };
-  function hits(a, b) {
-    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-  }
-  var titleZone = { x: 0, y: titleTop, w: W, h: titleBottom - titleTop };
-  var volFs = Math.round(W * 0.020);
-  x.font = '900 ' + volFs + 'px "DisplayBlack", sans-serif';
-  var volW = x.measureText(state.vol).width + W * 0.03;
-  var volH = volFs * 2.1;
-  var volRect = { x: W * 0.018, y: H * 0.022, w: volW, h: volH };
-  x.font = '900 ' + Math.round(H * 0.022) + 'px SansBold, sans-serif';
-  var wW0 = x.measureText('WANTED  ' + '★'.repeat(state.stars)).width + W * 0.024;
-  var wantedRect = { x: W - m - wW0, y: H * 0.018, w: wW0, h: H * 0.036 };
-  var sbR = W * 0.048;
-  var starRect = { x: W * 0.70 - sbR, y: H * 0.40 - sbR, w: sbR * 2, h: sbR * 2 };
-  function blocked(rc) {
-    return hits(rc, titleZone) || hits(rc, quoteRect) || hits(rc, volRect) || hits(rc, wantedRect) || hits(rc, starRect);
-  }
-  /* story labels, smaller than v3, dodging the title and the quote bar */
-  for (var li = 0; li < defs.length; li++) {
-    var lab = state.panels[li].label;
-    var r = rects[li];
-    var placeFs = Math.max(12, Math.round(W * 0.0125));
-    var subFs = Math.max(9, Math.round(W * 0.0088));
-    x.font = '900 ' + placeFs + 'px SansBold, sans-serif';
-    var pw1 = x.measureText(lab.place).width;
-    x.font = subFs + 'px SansBold, sans-serif';
-    var pw2 = x.measureText(lab.sub).width;
-    var chipW = Math.max(pw1, pw2) + W * 0.016;
-    var chipH = placeFs + subFs + H * 0.018;
-    var cand = [
-      { x: r.x + W * 0.008, y: r.y + r.h - chipH - H * 0.008, w: chipW, h: chipH },
-      { x: r.x + W * 0.008, y: r.y + H * 0.008, w: chipW, h: chipH },
-      { x: r.x + W * 0.16, y: r.y + H * 0.008, w: chipW, h: chipH }
-    ];
-    var chosen = null;
-    for (var c = 0; c < cand.length; c++) {
-      var cd = cand[c];
-      if (cd.x + cd.w > r.x + r.w + 2 || cd.y + cd.h > r.y + r.h + 2) continue;
-      if (!blocked(cd)) { chosen = cd; break; }
-    }
-    if (!chosen) continue;
-    x.save();
-    x.globalAlpha = 0.86;
-    x.fillStyle = '#12061C';
-    roundRect(x, chosen.x, chosen.y, chosen.w, chosen.h, H * 0.006);
-    x.fill();
-    x.restore();
-    x.fillStyle = '#FFFFFF';
-    x.font = '900 ' + placeFs + 'px SansBold, sans-serif';
-    x.textAlign = 'left';
-    x.textBaseline = 'alphabetic';
-    x.fillText(lab.place, chosen.x + W * 0.008, chosen.y + placeFs + H * 0.006);
-    x.fillStyle = '#FFD23F';
-    x.font = subFs + 'px SansBold, sans-serif';
-    x.fillText(lab.sub, chosen.x + W * 0.008, chosen.y + placeFs + subFs + H * 0.012);
-  }
-  /* stars + quote bar directly above the title */
-  x.save();
-  x.globalAlpha = 0.92;
-  x.fillStyle = '#12061C';
-  roundRect(x, quoteRect.x, quoteRect.y, quoteRect.w, quoteRect.h, quoteRect.h / 2);
-  x.fill();
-  x.restore();
-  x.font = Math.round(H * 0.020) + 'px SansBold, sans-serif';
-  x.textAlign = 'left';
-  x.textBaseline = 'middle';
-  x.fillStyle = '#FFD23F';
-  x.fillText('★★★★★', quoteRect.x + W * 0.012, quoteRect.y + quoteRect.h / 2);
-  var starW = x.measureText('★★★★★  ').width;
-  x.fillStyle = '#FFFFFF';
-  x.fillText('PURE ADRENALINE IN EVERY FRAME', quoteRect.x + W * 0.012 + starW, quoteRect.y + quoteRect.h / 2);
-  /* gold italic title with purple 3D shadow */
-  var titleInfo = drawTitle(x, W, H, titleTop, titleBottom);
-  drawScript(x, W, H, titleInfo);
-  /* badges on the photos */
-  drawStarburst(x, W * 0.70, H * 0.40, W * 0.048);
-  x.save();
-  x.translate(W * 0.018, H * 0.022);
-  x.rotate(-0.14);
-  x.fillStyle = '#FFD23F';
-  roundRect(x, 0, 0, volW, volH, volH * 0.22);
-  x.fill();
-  x.fillStyle = '#2A0A2E';
-  x.font = '900 ' + volFs + 'px "DisplayBlack", sans-serif';
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.fillText(state.vol, volW / 2, volH / 2);
-  x.restore();
-  if (state.est) {
-    var er = W * 0.030;
-    var ex = W * 0.945, ey = H * 0.40;
-    x.save();
-    x.beginPath();
-    x.arc(ex, ey, er, 0, Math.PI * 2);
-    x.fillStyle = '#F5B81D';
-    x.fill();
-    x.lineWidth = Math.max(2, er * 0.08);
-    x.strokeStyle = '#2A0A2E';
-    x.stroke();
-    x.fillStyle = '#2A0A2E';
-    x.textAlign = 'center';
-    x.textBaseline = 'middle';
-    x.font = '900 ' + Math.round(er * 0.34) + 'px SansBold, sans-serif';
-    x.fillText('EST.', ex, ey - er * 0.22);
-    x.fillText('2026', ex, ey + er * 0.26);
-    x.restore();
-  }
-  if (state.wanted) {
-    var stars = '';
-    for (var s = 0; s < state.stars; s++) stars += '★';
-    x.font = '900 ' + Math.round(H * 0.022) + 'px SansBold, sans-serif';
-    var wText = 'WANTED  ' + stars;
-    var wW = x.measureText(wText).width + W * 0.024;
-    var wH = H * 0.036;
-    var wx = W - m - wW, wy = H * 0.018;
-    x.save();
-    x.globalAlpha = 0.94;
-    x.fillStyle = '#12061C';
-    roundRect(x, wx, wy, wW, wH, wH / 2);
-    x.fill();
-    x.restore();
-    x.fillStyle = '#FFFFFF';
-    x.textAlign = 'left';
-    x.textBaseline = 'middle';
-    x.fillText('WANTED', wx + W * 0.012, wy + wH / 2);
-    x.fillStyle = '#FFD23F';
-    x.fillText(stars, wx + W * 0.012 + x.measureText('WANTED  ').width, wy + wH / 2);
-  }
-  /* bottom strip: thin, dark, small text, palms at the far edges only */
-  var sg = x.createLinearGradient(0, stripTop, 0, footerTop);
-  sg.addColorStop(0, '#3A1150');
-  sg.addColorStop(1, '#1E0A2E');
-  x.fillStyle = sg;
-  x.fillRect(0, stripTop, W, footerTop - stripTop);
-  drawPalm(x, W * 0.012, footerTop - H * 0.004, H * 0.055, '#0E0418');
-  drawPalm(x, W * 0.965, footerTop - H * 0.004, H * 0.055, '#0E0418');
-  var stripText = 'W E L C O M E   T O   L E O N I D A   —   S U M M E R   2 0 2 6';
-  var stripFs = Math.round(H * 0.030);
-  x.font = '900 ' + stripFs + 'px "DisplayCond", sans-serif';
-  if (x.measureText(stripText).width > W * 0.88) {
-    stripFs = Math.round(stripFs * W * 0.88 / x.measureText(stripText).width);
-    x.font = '900 ' + stripFs + 'px "DisplayCond", sans-serif';
-  }
-  x.fillStyle = '#FFF3C4';
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.fillText(stripText, W / 2, (stripTop + footerTop) / 2);
-  /* footer microcopy + barcode */
-  x.fillStyle = '#12061C';
-  x.fillRect(0, footerTop, W, H - footerTop);
-  var footText = 'VICE HEAT — A VICE HEAT COVER STUDIO PICTURE — STARRING YOU — SHOT ON YOUR OWN CAMERA — GRADED BY HAND — LETTERING AND SEAL ORIGINAL — CAT. VH-0626';
-  var footFs = Math.round(H * 0.0115);
-  x.font = footFs + 'px SansBold, sans-serif';
-  var footMax = W * 0.945 - W * 0.01 - W * 0.012;
-  if (x.measureText(footText).width > footMax) {
-    footFs = Math.round(footFs * footMax / x.measureText(footText).width);
-    x.font = footFs + 'px SansBold, sans-serif';
-  }
-  x.fillStyle = '#B9A8D6';
-  x.textAlign = 'left';
-  x.textBaseline = 'middle';
-  x.fillText(footText, W * 0.012, (footerTop + H) / 2);
-  drawBarcode(x, W * 0.945, footerTop + (H - footerTop) * 0.22, W * 0.042, (H - footerTop) * 0.56);
+  return imageCache.get(index);
 }
 
-function layoutRects(W, H) {
-  var m = Math.round(W * 0.008);
-  var g = Math.max(2, Math.round(W * 0.004));
-  var stripTop = H * 0.885;
-  var ax = m, ay = m, aw = W - 2 * m, ah = stripTop - m;
-  return LAYOUTS[state.layout].map(function (d) {
-    return {
-      x: ax + d.x * aw + g / 2, y: ay + d.y * ah + g / 2,
-      w: d.w * aw - g, h: d.h * ah - g
-    };
-  });
-}
-function previewDims() {
-  if (state.size === '1080x1350') return [648, 810];
-  if (state.size === '1080x1080') return [720, 720];
-  return [960, 540];
-}
-function renderPreview() {
-  var pv = $('preview');
-  var dims = previewDims();
-  pv.width = dims[0];
-  pv.height = dims[1];
-  renderCover(pv, dims[0], dims[1]);
-  positionFaceBox();
-  var sel = state.panels[state.selected];
-  $('panelLabel').textContent = (state.selected + 1) + ' OF ' + state.panels.length;
-  $('zoom').value = sel.zoom;
-  $('zoomVal').textContent = sel.zoom.toFixed(1) + '×';
-  $('place').value = sel.label.place;
-  $('subline').value = sel.label.sub;
-  var dots = $('panelDots').children;
-  for (var i = 0; i < dots.length; i++) dots[i].classList.toggle('on', i === state.selected);
-}
-function positionFaceBox() {
-  var box = $('faceBox');
-  var sel = state.panels[state.selected];
-  var photo = PHOTOS[sel.photo];
-  if (!photo || !photo.face || !state.faceSafe) { box.style.display = 'none'; return; }
-  var pv = $('preview');
-  var W = pv.width, H = pv.height;
-  var rects = layoutRects(W, H);
-  var r = rects[state.selected];
-  var crop = computeCrop(photo.img, sel, r.w, r.h);
-  var fx = (photo.face.x * crop.iw - crop.sx) / crop.sw;
-  var fy = (photo.face.y * crop.ih - crop.sy) / crop.sh;
-  var fw = (photo.face.w * crop.iw) / crop.sw;
-  var fh = (photo.face.h * crop.ih) / crop.sh;
-  var left = (r.x + (fx - fw / 2) * r.w) / W * 100;
-  var top = (r.y + (fy - fh / 2) * r.h) / H * 100;
-  box.style.display = 'block';
-  box.style.left = left + '%';
-  box.style.top = top + '%';
-  box.style.width = (fw * r.w / W * 100) + '%';
-  box.style.height = (fh * r.h / H * 100) + '%';
-}
-function buildButtons() {
-  var lg = $('layouts');
-  lg.innerHTML = '';
-  LAYOUT_NAMES.forEach(function (name) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = name;
-    b.classList.toggle('on', name === state.layout);
-    b.addEventListener('click', function () {
-      state.layout = name;
-      buildPanels();
-      buildButtons();
-      renderPreview();
-    });
-    lg.appendChild(b);
-  });
-  var gr = $('grades');
-  gr.innerHTML = '';
-  GRADE_NAMES.forEach(function (name) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = name;
-    b.classList.toggle('on', name === state.grade);
-    b.addEventListener('click', function () {
-      state.grade = name;
-      var base = GRADES[name];
-      state.sliders.painterly = base.painterly;
-      state.sliders.ink = base.ink;
-      state.sliders.halftone = base.halftone;
-      state.sliders.skin = base.skin;
-      syncSliders();
-      buildButtons();
-      renderPreview();
-    });
-    gr.appendChild(b);
-  });
-  var dots = $('panelDots');
-  dots.innerHTML = '';
-  state.panels.forEach(function (p, i) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = String(i + 1);
-    b.classList.toggle('on', i === state.selected);
-    b.addEventListener('click', function () { state.selected = i; renderPreview(); });
-    dots.appendChild(b);
-  });
-}
-function buildThumbs() {
-  var th = $('thumbs');
-  th.innerHTML = '';
-  PHOTOS.forEach(function (p, i) {
-    var img = document.createElement('img');
-    img.src = p.src;
-    img.alt = 'photo ' + (i + 1);
-    var sel = state.panels[state.selected];
-    if (sel && sel.photo === i) img.classList.add('sel');
-    img.addEventListener('click', function () {
-      state.panels[state.selected].photo = i;
-      state.panels[state.selected].zoom = 1;
-      state.panels[state.selected].cx = 0.5;
-      state.panels[state.selected].cy = 0.5;
-      state.panels[state.selected].panned = false;
-      buildThumbs();
-      renderPreview();
-    });
-    th.appendChild(img);
-  });
-  $('photoCount').textContent = PHOTOS.length + ' LOADED';
-}
-function syncSliders() {
-  $('slPainterly').value = state.sliders.painterly;
-  $('slInk').value = state.sliders.ink;
-  $('slHalftone').value = state.sliders.halftone;
-  $('slSkin').value = state.sliders.skin;
-  $('vPainterly').textContent = state.sliders.painterly;
-  $('vInk').textContent = state.sliders.ink;
-  $('vHalftone').textContent = state.sliders.halftone;
-  $('vSkin').textContent = state.sliders.skin;
-}
-function bindSlider(id, key, vid) {
-  $(id).addEventListener('input', function (e) {
-    state.sliders[key] = Number(e.target.value);
-    $(vid).textContent = e.target.value;
-    renderPreview();
-  });
-}
-function downloadBlob(blob, name) {
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-function exportPNG(w, h, download) {
-  var c = document.createElement('canvas');
-  renderCover(c, w, h);
-  return new Promise(function (resolve) {
-    c.toBlob(function (blob) {
-      if (download) downloadBlob(blob, 'vice-heat-' + w + 'x' + h + '.png');
-      resolve(blob);
-    }, 'image/png');
-  });
-}
-var SURPRISES = [
-  ['Hero', 'Miami Sunset'], ['Diagonal Split', 'Neon Night'], ['9 Panels', 'Golden Hour'],
-  ['Comic', 'Comic Ink'], ['Hero + Strip', 'Duotone Pink/Teal'], ['3 Panels', 'Palm Noir'],
-  ['Hero', 'Golden Hour'], ['Diagonal Split', 'Miami Sunset']
-];
-function wireEvents() {
-  $('addPhotos').addEventListener('click', function () { $('fileInput').click(); });
-  $('addPhotosTop').addEventListener('click', function () { $('fileInput').click(); });
-  $('fileInput').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
-  var wrap = $('previewWrap');
-  wrap.addEventListener('dragover', function (e) { e.preventDefault(); });
-  wrap.addEventListener('drop', function (e) { e.preventDefault(); addFiles(e.dataTransfer.files); });
-  $('zoom').addEventListener('input', function (e) {
-    var sel = state.panels[state.selected];
-    sel.zoom = Number(e.target.value);
-    sel.panned = true;
-    $('zoomVal').textContent = sel.zoom.toFixed(1) + '×';
-    renderPreview();
-  });
-  $('autoCrop').addEventListener('click', function () {
-    var sel = state.panels[state.selected];
-    sel.zoom = 1; sel.cx = 0.5; sel.cy = 0.5; sel.panned = false;
-    renderPreview();
-  });
-  $('replacePhoto').addEventListener('click', function () {
-    var sel = state.panels[state.selected];
-    sel.photo = (sel.photo + 1) % PHOTOS.length;
-    sel.zoom = 1; sel.cx = 0.5; sel.cy = 0.5; sel.panned = false;
-    buildThumbs();
-    renderPreview();
-  });
-  $('fillAll').addEventListener('click', function () {
-    var ph = state.panels[state.selected].photo;
-    state.panels.forEach(function (p) { p.photo = ph; });
-    buildThumbs();
-    renderPreview();
-  });
-  $('spreadAll').addEventListener('click', function () {
-    state.panels.forEach(function (p, i) { p.photo = i % PHOTOS.length; });
-    buildThumbs();
-    renderPreview();
-  });
-  $('faceSafe').addEventListener('change', function (e) { state.faceSafe = e.target.checked; renderPreview(); });
-  $('wanted').addEventListener('change', function (e) { state.wanted = e.target.checked; renderPreview(); });
-  $('stars').addEventListener('input', function (e) { state.stars = Number(e.target.value); renderPreview(); });
-  $('vol').addEventListener('input', function (e) { state.vol = e.target.value.toUpperCase(); renderPreview(); });
-  $('estSeal').addEventListener('change', function (e) { state.est = e.target.checked; renderPreview(); });
-  $('place').addEventListener('input', function (e) { state.panels[state.selected].label.place = e.target.value.toUpperCase(); renderPreview(); });
-  $('subline').addEventListener('input', function (e) { state.panels[state.selected].label.sub = e.target.value.toUpperCase(); renderPreview(); });
-  $('titleInput').addEventListener('input', function (e) { state.title = e.target.value; renderPreview(); });
-  $('subtitleInput').addEventListener('input', function (e) { state.subtitle = e.target.value; renderPreview(); });
-  bindSlider('slPainterly', 'painterly', 'vPainterly');
-  bindSlider('slInk', 'ink', 'vInk');
-  bindSlider('slHalftone', 'halftone', 'vHalftone');
-  bindSlider('slSkin', 'skin', 'vSkin');
-  var sizes = $('sizes').querySelectorAll('.size');
-  sizes.forEach(function (b) {
-    b.addEventListener('click', function () {
-      state.size = b.getAttribute('data-size');
-      sizes.forEach(function (s) { s.classList.toggle('on', s === b); });
-      var wh = SIZES[state.size];
-      $('exportPng').textContent = 'EXPORT PNG ' + wh[0] + ' × ' + wh[1];
-      renderPreview();
-    });
-  });
-  $('exportPng').addEventListener('click', function () {
-    var wh = SIZES[state.size];
-    exportPNG(wh[0], wh[1], true);
-  });
-  function exportAll() {
-    var list = [[1920, 1080], [1080, 1350], [1080, 1080]];
-    var chain = Promise.resolve();
-    list.forEach(function (wh) {
-      chain = chain.then(function () { return exportPNG(wh[0], wh[1], true); });
-    });
-    return chain;
+let fontsReady = null;
+function loadFonts() {
+  if (!fontsReady) {
+    fontsReady = Promise.all([
+      document.fonts.load('100px "ViceCond"'),
+      document.fonts.load('100px "ViceBlack"'),
+      document.fonts.load('40px "ViceSans"'),
+      document.fonts.load('60px "ViceScript"'),
+    ]).catch(() => undefined).then(() => document.fonts.ready).catch(() => undefined);
   }
-  $('exportAll').addEventListener('click', exportAll);
-  $('exportAllTop').addEventListener('click', exportAll);
-  $('surprise').addEventListener('click', function () {
-    var pick = SURPRISES[state.surpriseIdx % SURPRISES.length];
-    state.surpriseIdx++;
-    state.layout = pick[0];
-    state.grade = pick[1];
-    var base = GRADES[pick[1]];
-    state.sliders.painterly = base.painterly;
-    state.sliders.ink = base.ink;
-    state.sliders.halftone = base.halftone;
-    state.sliders.skin = base.skin;
-    syncSliders();
-    buildPanels();
-    buildButtons();
-    renderPreview();
-  });
-  wireCanvas();
+  return fontsReady;
 }
-function addFiles(files) {
-  var list = Array.prototype.slice.call(files || []);
-  var chain = Promise.resolve();
-  list.forEach(function (f) {
-    if (!f.type || f.type.indexOf('image/') !== 0) return;
-    chain = chain.then(function () {
-      return new Promise(function (resolve) {
-        var rd = new FileReader();
-        rd.onload = function () {
-          loadImage(rd.result).then(function (img) {
-            PHOTOS.push({ src: rd.result, img: img, face: null });
-            resolve();
-          }).catch(function () { resolve(); });
-        };
-        rd.onerror = function () { resolve(); };
-        rd.readAsDataURL(f);
-      });
-    });
-  });
-  chain.then(function () { buildThumbs(); renderPreview(); });
+
+// Cover-fit draw of one photo into a rectangle, keeping the photo's face
+// (or its focus point) near the top of the frame so the title never covers it.
+function drawCoverFit(ctx, img, x, y, w, h, faceY, faceShift) {
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const scale = Math.max(w / iw, h / ih);
+  const sw = w / scale, sh = h / scale;
+  const sx = (iw - sw) / 2;
+  const target = clamp(faceY + faceShift, 0.05, 0.6);
+  const sy = clamp(target * ih - 0.2 * sh, 0, Math.max(0, ih - sh));
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
-function wireCanvas() {
-  var pv = $('preview');
-  var dragging = null;
-  function canvasPos(e) {
-    var r = pv.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * pv.width, y: (e.clientY - r.top) / r.height * pv.height };
-  }
-  pv.addEventListener('pointerdown', function (e) {
-    var pos = canvasPos(e);
-    var rects = layoutRects(pv.width, pv.height);
-    for (var i = 0; i < rects.length; i++) {
-      var r = rects[i];
-      if (pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h) {
-        state.selected = i;
-        dragging = { x: pos.x, y: pos.y, panel: state.panels[i], rect: r };
-        pv.setPointerCapture(e.pointerId);
-        renderPreview();
-        break;
+
+// The grade: warm wash, blue water pushed to purple/magenta, saturation and
+// contrast, then posterize into flat colour blocks (the mosaic look) with
+// skin kept softer, and a whisper of deterministic grain on top.
+function gradePixels(imageData, g, seed) {
+  const d = imageData.data;
+  const levels = g.posterize > 0 ? g.posterize : 0;
+  const fine = Math.min(24, levels * 3 + 2);
+  const warm = g.warm / 100, shift = g.blueShift / 100, keep = g.keepSkin / 100;
+  const rnd = seeded(seed);
+  const quant = (v, lv) => {
+    if (lv <= 1) return v;
+    const step = 255 / (lv - 1);
+    return Math.round(v / step) * step;
+  };
+  for (let i = 0; i < d.length; i += 4) {
+    const or = d[i], og = d[i + 1], ob = d[i + 2];
+    let r = or, gg = og, b = ob;
+    r += warm * 26; gg += warm * 5; b -= warm * 30;
+    if (shift > 0) {
+      const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+      const dlt = mx - mn;
+      if (dlt > 24 && mx === b) {
+        const hue = 60 * (4 + (r - gg) / dlt);
+        if (hue >= 185 && hue <= 265) {
+          const nh = hue + (295 - hue) * shift * 0.7;
+          const l = (mx + mn) / 2 / 255;
+          const c = dlt / 255;
+          const x = c * (1 - Math.abs(((nh / 60) % 2) - 1));
+          const m = l - c / 2;
+          let rr = 0, g2 = 0, bb = 0;
+          if (nh < 60) { rr = c; g2 = x; }
+          else if (nh < 120) { rr = x; g2 = c; }
+          else if (nh < 180) { g2 = c; bb = x; }
+          else if (nh < 240) { g2 = x; bb = c; }
+          else if (nh < 300) { rr = x; bb = c; }
+          else { rr = c; bb = x; }
+          r = (rr + m) * 255; gg = (g2 + m) * 255; b = (bb + m) * 255;
+        }
       }
     }
+    const lum = 0.299 * r + 0.587 * gg + 0.114 * b;
+    r = lum + (r - lum) * g.sat; gg = lum + (gg - lum) * g.sat; b = lum + (b - lum) * g.sat;
+    r = (r - 128) * g.contrast + 128; gg = (gg - 128) * g.contrast + 128; b = (b - 128) * g.contrast + 128;
+    r *= g.bright; gg *= g.bright; b *= g.bright;
+    const skin = or > 95 && or > og && og > ob && or - og < 85 && og - ob < 75 && or < 252;
+    let pr = quant(r, levels), pg = quant(gg, levels), pb = quant(b, levels);
+    if (skin && keep > 0) {
+      const k = keep * 0.85;
+      pr = lerp(pr, quant(r, fine), k); pg = lerp(pg, quant(gg, fine), k); pb = lerp(pb, quant(b, fine), k);
+    }
+    const n = (rnd() - 0.5) * 10;
+    d[i] = clamp(pr + n); d[i + 1] = clamp(pg + n); d[i + 2] = clamp(pb + n);
+  }
+}
+
+function softenPainterly(off, amount) {
+  if (amount <= 0) return;
+  const f = 1 - (amount / 100) * 0.55;
+  const tw = Math.max(2, Math.round(off.width * f));
+  const th = Math.max(2, Math.round(off.height * f));
+  const tiny = document.createElement('canvas');
+  tiny.width = tw; tiny.height = th;
+  const tctx = tiny.getContext('2d');
+  tctx.drawImage(off, 0, 0, tw, th);
+  const octx = off.getContext('2d');
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.clearRect(0, 0, off.width, off.height);
+  octx.drawImage(tiny, 0, 0, tw, th, 0, 0, off.width, off.height);
+}
+
+function inkVignette(off, amount) {
+  if (amount <= 0) return;
+  const ctx = off.getContext('2d');
+  const w = off.width, h = off.height;
+  const grad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
+  grad.addColorStop(0, 'rgba(12,2,10,0)');
+  grad.addColorStop(1, `rgba(12,2,10,${(amount / 100) * 0.38})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function halftoneDots(off, amount) {
+  if (amount <= 0) return;
+  const ctx = off.getContext('2d');
+  const w = off.width, h = off.height;
+  const step = 7;
+  ctx.fillStyle = `rgba(18,0,12,${0.05 + (amount / 100) * 0.1})`;
+  for (let yy = step / 2; yy < h; yy += step) {
+    for (let xx = step / 2; xx < w; xx += step) ctx.fillRect(xx, yy, 1.6, 1.6);
+  }
+  ctx.fillStyle = 'rgba(255,240,220,0.05)';
+  for (let yy = step; yy < h; yy += step) {
+    for (let xx = step; xx < w; xx += step) ctx.fillRect(xx, yy, 1.2, 1.2);
+  }
+}
+
+async function paintPanel(ctx, panel, px, py, pw, ph, grade, seed, H) {
+  const img = await loadPhoto(panel.p);
+  const off = document.createElement('canvas');
+  off.width = Math.max(2, Math.round(pw)); off.height = Math.max(2, Math.round(ph));
+  const octx = off.getContext('2d');
+  drawCoverFit(octx, img, 0, 0, off.width, off.height, PHOTOS[panel.p].faceY, state.faceShift);
+  const data = octx.getImageData(0, 0, off.width, off.height);
+  gradePixels(data, grade, seed);
+  octx.putImageData(data, 0, 0);
+  softenPainterly(off, grade.painterly);
+  inkVignette(off, grade.ink);
+  halftoneDots(off, grade.halftone);
+  ctx.save();
+  if (panel.clip) {
+    ctx.beginPath();
+    panel.clip.forEach(([fx, fy], i) => {
+      const cx = px + fx * pw, cy = py + fy * ph;
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    });
+    ctx.closePath();
+    ctx.clip();
+  }
+  ctx.drawImage(off, px, py, pw, ph);
+  ctx.restore();
+  if (panel.clip) {
+    ctx.save();
+    ctx.strokeStyle = '#f7efda';
+    ctx.lineWidth = Math.max(3, pw * 0.004);
+    ctx.beginPath();
+    ctx.moveTo(px, py + 0.38 * ph);
+    ctx.lineTo(px + pw, py + 0.58 * ph);
+    ctx.stroke();
+    ctx.restore();
+  }
+  const photo = PHOTOS[panel.p];
+  const labelH = Math.max(16, ph * 0.055);
+  const label = `${photo.label} — ${photo.sub}`;
+  ctx.save();
+  ctx.font = `700 ${Math.round(labelH * 0.52)}px "ViceSans", sans-serif`;
+  const tw = ctx.measureText(label).width;
+  // The title covers the lower photos, so a label near a panel's bottom edge
+  // moves: a tall panel's label sits just above the title zone, a short
+  // bottom-row panel's label sits at its own top edge, inside its photo.
+  const nearBottom = py + ph - labelH - ph * 0.03;
+  const labelTop = nearBottom > H * 0.6 - labelH
+    ? (ph > H * 0.5 ? H * 0.6 - labelH - 8 : py + 8)
+    : nearBottom;
+  ctx.fillStyle = 'rgba(16,4,14,0.72)';
+  ctx.fillRect(px + pw * 0.02, labelTop, tw + labelH * 0.9, labelH);
+  ctx.fillStyle = '#f7efda';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, px + pw * 0.02 + labelH * 0.45, labelTop + labelH / 2);
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function star(ctx, cx, cy, outer, inner, points) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const rad = i % 2 === 0 ? outer : inner;
+    const a = (i * Math.PI) / points - Math.PI / 2;
+    const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function paintTitleCard(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.fillStyle = '#1c0512';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#f7efda';
+  ctx.lineWidth = Math.max(2, w * 0.012);
+  ctx.strokeRect(x + w * 0.04, y + h * 0.04, w * 0.92, h * 0.92);
+  const size = Math.min(w * 0.24, h * 0.26);
+  ctx.font = `900 ${Math.round(size)}px "ViceCond", "Arial Narrow", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffc93c';
+  ctx.fillText('VICE', x + w / 2, y + h * 0.36);
+  ctx.fillText('HEAT', x + w / 2, y + h * 0.62);
+  ctx.font = `${Math.round(size * 0.52)}px "ViceScript", cursive`;
+  ctx.fillStyle = '#ff6fa5';
+  ctx.fillText('Leonida', x + w / 2, y + h * 0.88);
+  ctx.restore();
+}
+
+// The title: skewed first, gradient created AFTER the skew, so the letters
+// sample the whole cream-gold-orange-pink run instead of only its pale top.
+function paintTitle(ctx, W, H) {
+  const title = (state.title || 'VICE HEAT').toUpperCase();
+  const stripTop = H * 0.93;
+  let size = H * 0.34;
+  ctx.save();
+  ctx.font = `900 ${Math.round(size)}px "ViceCond", "Arial Narrow", sans-serif`;
+  const textW = ctx.measureText(title).width;
+  const fit = (W * 0.90) / Math.max(1, textW);
+  if (fit < 1) size *= fit;
+  ctx.font = `900 ${Math.round(size)}px "ViceCond", "Arial Narrow", sans-serif`;
+  const capH = size * 0.72;
+  const baseY = stripTop - H * 0.015;
+  const tx = Math.max(W * 0.02, (W - ctx.measureText(title).width) / 2);
+  ctx.translate(tx, baseY);
+  ctx.transform(1, 0, -0.22, 1, 0, 0);
+  ctx.font = `900 ${Math.round(size)}px "ViceCond", "Arial Narrow", sans-serif`;
+  ctx.textBaseline = 'alphabetic';
+  const grad = ctx.createLinearGradient(0, -capH, 0, size * 0.08);
+  grad.addColorStop(0, '#fff8dc');
+  grad.addColorStop(0.38, '#ffd23c');
+  grad.addColorStop(0.68, '#ff7a1a');
+  grad.addColorStop(1, '#ff4d8d');
+  ctx.fillStyle = 'rgba(46,8,84,0.92)';
+  ctx.fillText(title, size * 0.02, size * 0.028);
+  ctx.fillStyle = 'rgba(74,20,140,0.92)';
+  ctx.fillText(title, size * 0.01, size * 0.014);
+  ctx.fillStyle = grad;
+  ctx.fillText(title, 0, 0);
+  ctx.restore();
+
+  const scriptSize = H * 0.085;
+  ctx.save();
+  ctx.font = `${Math.round(scriptSize)}px "ViceScript", cursive`;
+  ctx.fillStyle = '#ff6fa5';
+  ctx.strokeStyle = 'rgba(255,248,220,0.9)';
+  ctx.lineWidth = Math.max(1, scriptSize * 0.03);
+  const sw = ctx.measureText(state.script || 'Leonida').width;
+  const sx = Math.min(W * 0.66, W * 0.97 - sw);
+  ctx.translate(Math.max(W * 0.08, sx), baseY - capH * 0.42);
+  ctx.rotate(-0.14);
+  ctx.strokeText(state.script || 'Leonida', 0, 0);
+  ctx.fillText(state.script || 'Leonida', 0, 0);
+  ctx.restore();
+
+  // Stars and press quote sit right above the title.
+  const qY = baseY - capH - H * 0.052;
+  ctx.save();
+  ctx.font = `700 ${Math.round(H * 0.024)}px "ViceSans", sans-serif`;
+  const stars = '★★★★★';
+  const quote = state.quote || '';
+  const qText = `${stars}  ${quote}`;
+  const qw = ctx.measureText(qText).width;
+  ctx.fillStyle = 'rgba(16,4,14,0.6)';
+  roundRect(ctx, W / 2 - qw / 2 - H * 0.018, qY - H * 0.026, qw + H * 0.036, H * 0.048, H * 0.012);
+  ctx.fill();
+  ctx.fillStyle = '#ffd23c';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(stars, W / 2 - qw / 2, qY);
+  ctx.fillStyle = '#f7efda';
+  ctx.fillText(quote, W / 2 - qw / 2 + ctx.measureText(stars).width + ctx.measureText('  ').width, qY);
+  ctx.restore();
+}
+
+function paintBadges(ctx, W, H, layoutKey) {
+  const s = H * 0.001;
+  if (state.wanted) {
+    ctx.save();
+    const bh = H * 0.052;
+    const bx = W * 0.028, by = H * 0.032;
+    ctx.font = `900 ${Math.round(H * 0.026)}px "ViceCond", "Arial Narrow", sans-serif`;
+    const wWord = ctx.measureText('WANTED').width;
+    ctx.font = `${Math.round(H * 0.02)}px "ViceSans", sans-serif`;
+    const wStars = ctx.measureText('★★★★★').width;
+    const bw = Math.max(W * 0.13, wWord + wStars + bh * 1.6);
+    ctx.fillStyle = 'rgba(16,4,14,0.82)';
+    roundRect(ctx, bx, by, bw, bh, H * 0.01);
+    ctx.fill();
+    ctx.strokeStyle = '#ffd23c';
+    ctx.lineWidth = Math.max(1.5, s * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffd23c';
+    ctx.font = `900 ${Math.round(H * 0.026)}px "ViceCond", "Arial Narrow", sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText('WANTED', bx + bh * 0.55, by + bh / 2);
+    ctx.font = `${Math.round(H * 0.02)}px "ViceSans", sans-serif`;
+    ctx.fillStyle = '#ff6fa5';
+    ctx.fillText('★★★★★', bx + bh * 0.55 + wWord + bh * 0.3, by + bh / 2);
+    ctx.restore();
+  }
+  // Starburst: original cover art. In nine-panels the top-right photo is the
+  // fisherman, so the burst moves to the top middle, over sky, not his face.
+  ctx.save();
+  const nine = layoutKey === 'nine-panels';
+  const bx = nine ? W * 0.5 : W * 0.875, by = nine ? H * 0.05 : H * 0.105, br = nine ? H * 0.045 : H * 0.052;
+  ctx.translate(bx, by);
+  ctx.rotate(-0.2);
+  ctx.fillStyle = '#ffd23c';
+  ctx.strokeStyle = '#7a2b00';
+  ctx.lineWidth = Math.max(1.5, s * 2);
+  star(ctx, 0, 0, br, br * 0.62, 12);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#3a0a00';
+  ctx.font = `900 ${Math.round(H * 0.0135)}px "ViceSans", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ORIGINAL', 0, -H * 0.008);
+  ctx.fillText('COVER ART', 0, H * 0.01);
+  ctx.restore();
+  // Round stickers.
+  const sticker = (cx, cy, r, text) => {
+    ctx.save();
+    ctx.fillStyle = '#f7efda';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#c22a5e';
+    ctx.lineWidth = Math.max(1.5, r * 0.08);
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#c22a5e';
+    ctx.font = `900 ${Math.round(r * 0.34)}px "ViceSans", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, cx, cy);
+    ctx.restore();
+  };
+  sticker(W * 0.925, H * 0.42, H * 0.038, 'VOL. 06');
+  sticker(W * 0.075, H * 0.47, H * 0.034, 'EST. 2026');
+}
+
+// The bottom strip: tagline, microcopy, then the barcode in its own reserved
+// zone at the right edge, with padding, so it can never hit the microcopy.
+function paintStrip(ctx, W, H) {
+  const top = H * 0.93, h = H * 0.07;
+  ctx.save();
+  ctx.fillStyle = '#160409';
+  ctx.fillRect(0, top, W, h);
+  ctx.fillStyle = '#f7efda';
+  ctx.font = `900 ${Math.round(h * 0.32)}px "ViceCond", "Arial Narrow", sans-serif`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(state.tagline || '', W * 0.02, top + h * 0.5);
+  const tagEnd = W * 0.02 + ctx.measureText(state.tagline || '').width;
+  const barcodeW = W * 0.085;
+  const barcodeX = W * 0.985 - barcodeW;
+  const microStart = Math.max(W * 0.335, tagEnd + W * 0.02);
+  const microMax = barcodeX - W * 0.015 - microStart;
+  ctx.font = `700 ${Math.round(h * 0.21)}px "ViceSans", sans-serif`;
+  ctx.fillStyle = 'rgba(247,239,218,0.75)';
+  let micro = state.place || '';
+  while (micro.length > 1 && ctx.measureText(micro).width > microMax) micro = micro.slice(0, -1);
+  if (micro !== (state.place || '')) micro = micro.replace(/.$/, '…');
+  if (microMax > 20) ctx.fillText(micro, microStart, top + h * 0.52);
+  const bx = barcodeX + barcodeW * 0.06, bw = barcodeW * 0.88;
+  const by = top + h * 0.16, bh = h * 0.52;
+  ctx.fillStyle = '#f7efda';
+  ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+  ctx.fillStyle = '#160409';
+  const digits = '6901262026006';
+  let x = bx;
+  for (let i = 0; i < digits.length; i++) {
+    const wBar = (digits.charCodeAt(i) % 3) + 1;
+    const gap = (digits.charCodeAt(i + 1 < digits.length ? i + 1 : 0) % 2) + 1;
+    ctx.fillRect(x, by, wBar * (bw / 34), bh);
+    x += (wBar + gap) * (bw / 34);
+  }
+  ctx.font = `700 ${Math.round(h * 0.17)}px "ViceSans", sans-serif`;
+  ctx.fillStyle = 'rgba(247,239,218,0.85)';
+  ctx.textAlign = 'center';
+  ctx.fillText('VH-2026-006', barcodeX + barcodeW / 2, top + h * 0.9);
+  ctx.restore();
+}
+
+function gradeOf() {
+  const base = GRADES[state.grade] || GRADES['vice-sunset'];
+  return {
+    ...base,
+    painterly: state.painterly ?? base.painterly,
+    ink: state.ink ?? base.ink,
+    halftone: state.halftone ?? base.halftone,
+    keepSkin: state.keepSkin ?? base.keepSkin,
+  };
+}
+
+async function renderCover(canvas, W, H) {
+  const ctx = canvas.getContext('2d');
+  canvas.width = Math.round(W);
+  canvas.height = Math.round(H);
+  const grade = gradeOf();
+  const layout = LAYOUTS[state.layout] || LAYOUTS.hero;
+  ctx.fillStyle = '#f7efda';
+  ctx.fillRect(0, 0, W, H);
+  const gut = Math.max(3, Math.round(Math.min(W, H) * 0.005));
+  let seed = 20261120;
+  for (const panel of layout.panels) {
+    const px = panel.x * W + gut, py = panel.y * H + gut;
+    const pw = panel.w * W - gut * 2, ph = panel.h * H - gut * 2;
+    seed += 1013;
+    if (panel.card) { paintTitleCard(ctx, px, py, pw, ph); continue; }
+    await paintPanel(ctx, panel, px, py, pw, ph, grade, seed, H);
+  }
+  ctx.save();
+  ctx.strokeStyle = '#f7efda';
+  ctx.lineWidth = Math.max(4, Math.round(Math.min(W, H) * 0.006));
+  ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, W - ctx.lineWidth, H - ctx.lineWidth);
+  ctx.restore();
+  paintBadges(ctx, W, H, state.layout);
+  paintTitle(ctx, W, H);
+  paintStrip(ctx, W, H);
+}
+
+const photoPromises = [];
+function preloadAll() {
+  for (let i = 0; i < PHOTOS.length; i++) photoPromises.push(loadPhoto(i));
+  return Promise.allSettled(photoPromises);
+}
+
+async function renderPreview() {
+  const canvas = document.getElementById('cover');
+  if (!canvas) return;
+  await Promise.all([preloadAll(), loadFonts()]);
+  await renderCover(canvas, 1080, 1080);
+}
+
+async function exportPNG(w, h, download = true) {
+  await Promise.all([preloadAll(), loadFonts()]);
+  const off = document.createElement('canvas');
+  await renderCover(off, w, h);
+  const blob = await new Promise((resolve) => off.toBlob(resolve, 'image/png'));
+  const bytes = blob ? blob.size : 0;
+  window.__lastExport = { w, h, bytes };
+  if (download && blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vice-heat-${w}x${h}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  return window.__lastExport;
+}
+
+function syncControls() {
+  const grade = GRADES[state.grade] || GRADES['vice-sunset'];
+  document.querySelectorAll('#layoutGrid button').forEach((b) => b.classList.toggle('on', b.dataset.layout === state.layout));
+  document.querySelectorAll('#gradeGrid button').forEach((b) => b.classList.toggle('on', b.dataset.grade === state.grade));
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = String(v); };
+  set('slPainterly', state.painterly ?? grade.painterly);
+  set('slInk', state.ink ?? grade.ink);
+  set('slHalftone', state.halftone ?? grade.halftone);
+  set('slSkin', state.keepSkin ?? grade.keepSkin);
+  const ht = document.getElementById('halftoneToggle');
+  if (ht) ht.checked = (state.halftone ?? grade.halftone) > 0;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal('inTitle', state.title); setVal('inScript', state.script); setVal('inQuote', state.quote);
+  setVal('inTagline', state.tagline); setVal('inPlace', state.place);
+  const wt = document.getElementById('wantedToggle');
+  if (wt) wt.checked = state.wanted;
+  const fb = document.getElementById('faceBox');
+  if (fb) fb.style.top = `${(0.16 + state.faceShift) * 100}%`;
+}
+
+function buildEditor() {
+  const lg = document.getElementById('layoutGrid');
+  Object.entries(LAYOUTS).forEach(([key, layout]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.layout = key;
+    b.textContent = layout.name;
+    b.addEventListener('click', () => { state.layout = key; syncControls(); renderPreview(); });
+    lg.appendChild(b);
   });
-  pv.addEventListener('pointermove', function (e) {
+  const gg = document.getElementById('gradeGrid');
+  Object.entries(GRADES).forEach(([key, grade]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.grade = key;
+    b.textContent = grade.name;
+    b.addEventListener('click', () => {
+      state.grade = key;
+      state.painterly = null; state.ink = null; state.halftone = null; state.keepSkin = null;
+      syncControls(); renderPreview();
+    });
+    gg.appendChild(b);
+  });
+  const bindSlider = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => { state[key] = Number(el.value); renderPreview(); });
+  };
+  bindSlider('slPainterly', 'painterly');
+  bindSlider('slInk', 'ink');
+  bindSlider('slHalftone', 'halftone');
+  bindSlider('slSkin', 'keepSkin');
+  document.getElementById('halftoneToggle').addEventListener('change', (e) => {
+    state.halftone = e.target.checked ? Math.max(8, state.halftone ?? 8) : 0;
+    syncControls(); renderPreview();
+  });
+  const bindText = (id, key) => {
+    document.getElementById(id).addEventListener('input', (e) => { state[key] = e.target.value; renderPreview(); });
+  };
+  bindText('inTitle', 'title'); bindText('inScript', 'script'); bindText('inQuote', 'quote');
+  bindText('inTagline', 'tagline'); bindText('inPlace', 'place');
+  document.getElementById('wantedToggle').addEventListener('change', (e) => { state.wanted = e.target.checked; renderPreview(); });
+  document.getElementById('surpriseBtn').addEventListener('click', () => {
+    const pick = SURPRISES[state.surprise % SURPRISES.length];
+    state.surprise += 1;
+    Object.assign(state, pick);
+    state.painterly = null; state.ink = null; state.halftone = null; state.keepSkin = null;
+    syncControls(); renderPreview();
+  });
+  document.querySelectorAll('[data-export]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const [w, h] = b.dataset.export.split('x').map(Number);
+      const status = document.getElementById('status');
+      status.textContent = `Exporting ${w} x ${h}…`;
+      const done = await exportPNG(w, h, true);
+      status.textContent = `Exported vice-heat-${done.w}x${done.h}.png (${(done.bytes / 1024).toFixed(0)} KB).`;
+    });
+  });
+  const fb = document.getElementById('faceBox');
+  let dragging = false;
+  fb.addEventListener('pointerdown', (e) => { dragging = true; fb.setPointerCapture(e.pointerId); });
+  fb.addEventListener('pointermove', (e) => {
     if (!dragging) return;
-    var pos = canvasPos(e);
-    var dx = pos.x - dragging.x, dy = pos.y - dragging.y;
-    var p = dragging.panel, r = dragging.rect;
-    var photo = PHOTOS[p.photo];
-    if (!photo || !photo.img) return;
-    var crop = computeCrop(photo.img, p, r.w, r.h);
-    p.cx = clamp(p.cx - dx * crop.sw / (r.w * crop.iw), 0, 1);
-    p.cy = clamp(p.cy - dy * crop.sh / (r.h * crop.ih), 0, 1);
-    p.panned = true;
-    dragging.x = pos.x;
-    dragging.y = pos.y;
-    renderPreview();
+    const stage = document.getElementById('stage');
+    const r = stage.getBoundingClientRect();
+    const frac = (e.clientY - r.top) / r.height;
+    state.faceShift = clamp(frac - 0.16, -0.1, 0.2);
+    syncControls(); renderPreview();
   });
-  pv.addEventListener('pointerup', function () { dragging = null; });
-  pv.addEventListener('wheel', function (e) {
-    e.preventDefault();
-    var sel = state.panels[state.selected];
-    sel.zoom = clamp(sel.zoom * (e.deltaY < 0 ? 1.1 : 0.9), 1, 2.5);
-    sel.panned = true;
-    renderPreview();
-  }, { passive: false });
-  pv.addEventListener('dblclick', function () {
-    var sel = state.panels[state.selected];
-    sel.zoom = 1; sel.cx = 0.5; sel.cy = 0.5; sel.panned = false;
-    renderPreview();
-  });
-  var box = $('faceBox');
-  var faceDrag = null;
-  box.addEventListener('pointerdown', function (e) {
-    e.stopPropagation();
-    faceDrag = { x: e.clientX, y: e.clientY };
-    box.setPointerCapture(e.pointerId);
-  });
-  box.addEventListener('pointermove', function (e) {
-    if (!faceDrag) return;
-    var sel = state.panels[state.selected];
-    var photo = PHOTOS[sel.photo];
-    if (!photo || !photo.face) return;
-    var pv2 = $('preview');
-    var r = pv2.getBoundingClientRect();
-    var dx = (e.clientX - faceDrag.x) / r.width * pv2.width;
-    var dy = (e.clientY - faceDrag.y) / r.height * pv2.height;
-    var rects = layoutRects(pv2.width, pv2.height);
-    var rr = rects[state.selected];
-    var crop = computeCrop(photo.img, sel, rr.w, rr.h);
-    photo.face.x = clamp(photo.face.x + dx * crop.sw / (rr.w * crop.iw), 0, 1);
-    photo.face.y = clamp(photo.face.y + dy * crop.sh / (rr.h * crop.ih), 0, 1);
-    faceDrag.x = e.clientX;
-    faceDrag.y = e.clientY;
-    renderPreview();
-  });
-  box.addEventListener('pointerup', function () { faceDrag = null; });
+  fb.addEventListener('pointerup', () => { dragging = false; });
+  syncControls();
+  renderPreview();
 }
-var fontsReady = Promise.resolve();
-function init() {
-  buildPanels();
-  var loads = SAMPLES.map(function (src, i) {
-    return loadImage(src).then(function (img) {
-      PHOTOS[i] = { src: src, img: img, face: FACE_DEFAULTS[i] ? { x: FACE_DEFAULTS[i].x, y: FACE_DEFAULTS[i].y, w: FACE_DEFAULTS[i].w, h: FACE_DEFAULTS[i].h } : null };
-    }).catch(function () { PHOTOS[i] = null; });
-  });
-  fontsReady = Promise.all([
-    document.fonts.load('900 100px "DisplayCond"'),
-    document.fonts.load('900 100px "DisplayBlack"'),
-    document.fonts.load('700 20px "SansBold"'),
-    document.fonts.load('100px "Script"')
-  ]).catch(function () { return null; });
-  Promise.all(loads).then(function () {
-    PHOTOS = PHOTOS.filter(function (p) { return p; });
-    return fontsReady;
-  }).then(function () {
-    buildButtons();
-    buildThumbs();
-    syncSliders();
-    wireEvents();
-    renderPreview();
-  });
+
+async function runShot(query) {
+  const shot = query.get('shot') || 'editor';
+  const layout = query.get('layout');
+  const grade = query.get('grade');
+  if (layout && LAYOUTS[layout]) state.layout = layout;
+  if (grade && GRADES[grade]) state.grade = grade;
+  if (shot === 'cover') {
+    document.body.classList.add('shot-cover');
+    const size = (query.get('size') || '1920x1080').split('x').map(Number);
+    const canvas = document.getElementById('cover');
+    await Promise.all([preloadAll(), loadFonts()]);
+    await renderCover(canvas, size[0], size[1]);
+  } else {
+    buildEditor();
+    await renderPreview();
+  }
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  window.__shotReady = true;
 }
-window.__vh = {
-  state: state,
-  photos: PHOTOS,
-  renderPreview: renderPreview,
-  exportPNG: exportPNG,
-  renderCover: renderCover,
-  ready: null
-};
-init();
-window.__vh.ready = fontsReady;
+
+window.__viceHeat = { state, renderCover, exportPNG, renderPreview, PHOTOS, GRADES, LAYOUTS };
+
+const params = new URLSearchParams(window.location.search);
+if (params.get('shot')) {
+  runShot(params).catch((err) => {
+    window.__shotError = String(err);
+    document.getElementById('status').textContent = `Shot failed: ${err}`;
+  });
+} else {
+  buildEditor();
+}
