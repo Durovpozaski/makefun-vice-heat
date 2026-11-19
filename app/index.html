@@ -3,56 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VICE HEAT Cover Studio — GTA 6 style poster covers</title>
-<link rel="stylesheet" href="./style.css">
+<link rel="icon" href="data:,">
+<title>VICE HEAT Cover Studio</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="top">
-  <h1>VICE <span>HEAT</span></h1>
-  <p>Cover Studio — turn a photo and a caption into GTA 6 style poster art. Offline, right here.</p>
-</header>
-<main class="studio">
-  <section class="stage" id="stage">
-    <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
-    <div id="faceBox" title="Drag so the face stays clear of the title"></div>
-    <p class="hint">Drag the cyan face box so the lead's face stays in the top third, clear of the title. The cover repaints as you work.</p>
-  </section>
-  <aside class="panel">
-    <section>
-      <h2>Layout</h2>
-      <div class="grid" id="layoutGrid"></div>
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand-title">VICE HEAT</span><span class="brand-sub">Cover Studio &mdash; turn a photo and a caption into GTA 6 style poster art. Offline, right here.</span></div>
+    <button id="btn-surprise-top" class="btn ghost" type="button">Surprise me</button>
+  </header>
+  <main class="workspace">
+    <section class="stage">
+      <div class="cover-wrap" id="cover-wrap">
+        <canvas id="cover" width="1280" height="720"></canvas>
+        <div id="facebox" class="facebox" hidden><span>FACE</span></div>
+      </div>
+      <p class="hint">Drag the cyan face box so the lead&rsquo;s face stays in the top third, clear of the title. The cover repaints as you work.</p>
     </section>
-    <section>
-      <h2>Grade</h2>
-      <div class="grid" id="gradeGrid"></div>
-    </section>
-    <section>
-      <h2>Grade tune</h2>
-      <label class="row">Painterly <input id="slPainterly" type="range" min="0" max="100" value="35"></label>
-      <label class="row">Ink <input id="slInk" type="range" min="0" max="100" value="22"></label>
-      <label class="row">Halftone <input id="slHalftone" type="range" min="0" max="100" value="8"></label>
-      <label class="row">Keep skin <input id="slSkin" type="range" min="0" max="100" value="70"></label>
-      <label class="check"><input id="halftoneToggle" type="checkbox" checked> Halftone dots</label>
-    </section>
-    <section>
-      <h2>Words</h2>
-      <label class="row">Title <input id="inTitle" type="text" maxlength="24" value="VICE HEAT"></label>
-      <label class="row">Script <input id="inScript" type="text" maxlength="20" value="Leonida"></label>
-      <label class="row">Quote <input id="inQuote" type="text" maxlength="60" value="THE CITY NEVER LOOKED THIS GOOD."></label>
-      <label class="row">Tagline <input id="inTagline" type="text" maxlength="40" value="EVERY SUNSET HAS A PRICE."></label>
-      <label class="row">Place <input id="inPlace" type="text" maxlength="48" value="LEONIDA — VICE CITY"></label>
-      <label class="check"><input id="wantedToggle" type="checkbox" checked> WANTED badge</label>
-    </section>
-    <button id="surpriseBtn" type="button">Surprise me</button>
-    <section class="exports">
-      <h2>Export PNG</h2>
-      <button type="button" data-export="1920x1080">Export 1920 × 1080 — wide</button>
-      <button type="button" data-export="1080x1350">Export 1080 × 1350 — portrait</button>
-      <button type="button" data-export="1080x1080">Export 1080 × 1080 — square</button>
-      <p id="status" role="status"></p>
-    </section>
-  </aside>
-</main>
-<script type="module" src="./src/app.js"></script>
+    <aside class="panel" id="panel">
+      <section class="sec">
+        <h2>LAYOUT</h2>
+        <div id="layout-picker" class="grid3"></div>
+      </section>
+      <section class="sec">
+        <h2>GRADE</h2>
+        <div id="grade-picker" class="grid3"></div>
+      </section>
+      <section class="sec">
+        <h2>GRADE TUNE</h2>
+        <label class="slider-row"><span>Painterly</span><input id="tune-painterly" type="range" min="0" max="100" value="35"><b id="tune-painterly-v">35</b></label>
+        <label class="slider-row"><span>Ink</span><input id="tune-ink" type="range" min="0" max="100" value="22"><b id="tune-ink-v">22</b></label>
+        <label class="slider-row"><span>Halftone</span><input id="tune-halftone" type="range" min="0" max="100" value="8"><b id="tune-halftone-v">8</b></label>
+        <label class="slider-row"><span>Keep skin</span><input id="tune-keepskin" type="range" min="0" max="100" value="70"><b id="tune-keepskin-v">70</b></label>
+        <label class="check"><input id="tune-halftone-on" type="checkbox" checked> Halftone dots</label>
+      </section>
+      <section class="sec">
+        <h2>WORDS</h2>
+        <label class="field"><span>Title</span><input id="word-title" type="text" value="VICE HEAT" maxlength="14"></label>
+        <label class="field"><span>Script</span><input id="word-script" type="text" value="Leonida" maxlength="16"></label>
+        <label class="field"><span>Quote</span><input id="word-quote" type="text" value="THE CITY NEVER LOOKED THIS GOOD." maxlength="48"></label>
+        <label class="field"><span>Tagline</span><input id="word-tagline" type="text" value="EVERY SUNSET HAS A PRICE." maxlength="40"></label>
+        <label class="field"><span>Place</span><input id="word-place" type="text" value="LEONIDA &mdash; VICE CITY" maxlength="32"></label>
+      </section>
+      <section class="sec row">
+        <label class="check"><input id="wanted-toggle" type="checkbox" checked> WANTED badge</label>
+        <button id="btn-surprise" class="btn" type="button">Surprise me</button>
+      </section>
+      <section class="sec">
+        <h2>EXPORT PNG</h2>
+        <div class="export-row">
+          <button class="btn export" data-export="1920x1080" type="button">1920 &times; 1080</button>
+          <button class="btn export" data-export="1080x1350" type="button">1080 &times; 1350</button>
+          <button class="btn export" data-export="1080x1080" type="button">1080 &times; 1080</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+</div>
+<script type="module" src="src/app.js"></script>
 </body>
 </html>

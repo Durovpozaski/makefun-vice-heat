@@ -1,44 +1,49 @@
-@font-face { font-family: "ViceCond"; src: url("fonts/display-cond-black.ttf") format("truetype"); font-weight: 900; font-display: swap; }
-@font-face { font-family: "ViceBlack"; src: url("fonts/display-black.ttf") format("truetype"); font-weight: 900; font-display: swap; }
-@font-face { font-family: "ViceSans"; src: url("fonts/sans-bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
-@font-face { font-family: "ViceScript"; src: url("fonts/script-italic.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: #0e0a10; color: #f7efda; font-family: "ViceSans", "Helvetica Neue", Arial, sans-serif; }
-body { min-height: 100vh; }
-
-header.top { display: flex; align-items: baseline; gap: 14px; padding: 14px 20px 10px; border-bottom: 1px solid #2b1626; }
-header.top h1 { margin: 0; font-family: "ViceCond", "Arial Narrow", sans-serif; font-size: 30px; letter-spacing: 1px; color: #ffc93c; }
-header.top h1 span { color: #ff4d8d; }
-header.top p { margin: 0; color: #b9a89b; font-size: 13px; }
-
-main.studio { display: flex; gap: 18px; padding: 16px 20px 22px; align-items: flex-start; }
-section.stage { flex: 1 1 auto; min-width: 0; position: relative; background: #160409; border: 1px solid #2b1626; border-radius: 10px; padding: 12px; }
-#cover { display: block; width: 100%; height: auto; max-height: calc(100vh - 190px); object-fit: contain; background: transparent; border-radius: 4px; }
-#faceBox { position: absolute; left: 50%; top: 16%; width: 150px; height: 110px; margin-left: -75px; border: 2px dashed #22d3ee; border-radius: 6px; cursor: grab; background: rgba(34, 211, 238, 0.08); touch-action: none; }
-#faceBox::after { content: "FACE — DRAG"; position: absolute; left: 6px; top: -18px; font-size: 10px; letter-spacing: 1px; color: #22d3ee; }
-#faceBox:active { cursor: grabbing; }
-p.hint { margin: 10px 2px 0; color: #b9a89b; font-size: 12px; }
-
-aside.panel { flex: 0 0 320px; display: flex; flex-direction: column; gap: 14px; }
-aside.panel section { background: #17101a; border: 1px solid #2b1626; border-radius: 10px; padding: 12px; }
-aside.panel h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #ffc93c; }
-.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.grid button, .exports button, #surpriseBtn { font-family: "ViceSans", sans-serif; font-size: 12px; background: #241524; color: #f7efda; border: 1px solid #3a2036; border-radius: 6px; padding: 8px 6px; cursor: pointer; }
-.grid button:hover, .exports button:hover, #surpriseBtn:hover { border-color: #ff4d8d; }
-.grid button.on { background: #ff4d8d; border-color: #ff4d8d; color: #fff; }
-label.row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; margin: 8px 0; color: #d8c9bd; }
-label.row input[type="range"] { flex: 1; accent-color: #ff4d8d; }
-label.row input[type="text"] { flex: 1; background: #0e0a10; color: #f7efda; border: 1px solid #3a2036; border-radius: 5px; padding: 6px 8px; font-size: 12px; font-family: inherit; }
-label.check { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 8px 0; color: #d8c9bd; }
-label.check input { accent-color: #ff4d8d; }
-#surpriseBtn { width: 100%; padding: 10px; background: #ffc93c; color: #241100; border: none; font-weight: 700; }
-.exports { display: flex; flex-direction: column; gap: 6px; }
-.exports button { text-align: left; padding: 9px 10px; }
-#status { margin: 0; font-size: 12px; color: #8fd6a0; min-height: 16px; }
-
-body.shot-cover { background: #f7efda; }
-body.shot-cover header.top, body.shot-cover aside.panel, body.shot-cover p.hint, body.shot-cover #faceBox { display: none !important; }
-body.shot-cover main.studio { display: block; padding: 0; }
-body.shot-cover section.stage { padding: 0; border: none; border-radius: 0; background: transparent; }
-body.shot-cover #cover { width: 100vw; height: 100vh; max-height: none; object-fit: fill; border-radius: 0; }
+@font-face { font-family: "ViceDisplay"; src: url("fonts/display-black.ttf") format("truetype"); font-weight: 900; font-style: normal; }
+@font-face { font-family: "ViceDisplayCond"; src: url("fonts/display-cond-black.ttf") format("truetype"); font-weight: 900; font-style: normal; }
+@font-face { font-family: "ViceSans"; src: url("fonts/sans-bold.ttf") format("truetype"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "ViceScript"; src: url("fonts/script-italic.ttf") format("truetype"); font-weight: 400; font-style: italic; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: #150709; color: #f5e9c8; font-family: "ViceSans", system-ui, sans-serif; font-size: 13px; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100vh; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-bottom: 1px solid #3a1524; flex: 0 0 auto; }
+.brand-title { font-family: "ViceDisplayCond", sans-serif; font-size: 22px; letter-spacing: 1px; color: #ffc93c; }
+.brand-sub { color: #c9a9b4; font-size: 12px; margin-left: 8px; }
+.workspace { display: flex; gap: 14px; padding: 10px 14px 12px; flex: 1 1 auto; min-height: 0; }
+.stage { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cover-wrap { position: relative; flex: 1 1 auto; min-height: 0; background: #000; border: 1px solid #3a1524; border-radius: 6px; overflow: hidden; }
+.cover-wrap canvas { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.facebox { position: absolute; border: 2px dashed #29d3e8; border-radius: 3px; cursor: move; z-index: 3; }
+.facebox span { position: absolute; top: -16px; left: 0; font-size: 10px; letter-spacing: 1px; color: #29d3e8; background: rgba(0,0,0,.65); padding: 1px 4px; border-radius: 2px; }
+.hint { color: #c9a9b4; font-size: 11px; flex: 0 0 auto; }
+.stage-foot { display: flex; gap: 14px; align-items: baseline; flex: 0 0 auto; font-size: 12px; }
+.stage-foot #foot-tagline { font-weight: 700; color: #fff; }
+.stage-foot #foot-micro { color: #c9a9b4; }
+.stage-foot .catalog { margin-left: auto; color: #8a6a76; font-size: 11px; }
+.panel { flex: 0 0 348px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+.sec { background: #22101a; border: 1px solid #3a1524; border-radius: 6px; padding: 7px 9px; }
+.sec h2 { font-size: 11px; letter-spacing: 2px; color: #ffc93c; margin-bottom: 6px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.grid3 button, .btn { font-family: "ViceSans", sans-serif; font-size: 12px; background: #2e1622; color: #f5e9c8; border: 1px solid #4a2033; border-radius: 5px; padding: 6px 4px; cursor: pointer; line-height: 1.15; }
+.grid3 button:hover, .btn:hover { border-color: #ff4d8d; }
+.grid3 button.active, .btn.active { background: #ff4d8d; border-color: #ff4d8d; color: #fff; }
+.btn.ghost { background: transparent; }
+.slider-row { display: grid; grid-template-columns: 74px 1fr 24px; align-items: center; gap: 6px; font-size: 12px; margin: 3px 0; }
+.slider-row b { text-align: right; color: #ffc93c; font-weight: 700; }
+input[type="range"] { width: 100%; accent-color: #ff4d8d; height: 14px; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 4px; cursor: pointer; }
+.check input { accent-color: #ff4d8d; }
+.field { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 6px; font-size: 12px; margin: 3px 0; }
+.field input[type="text"] { background: #170a10; border: 1px solid #4a2033; color: #f5e9c8; border-radius: 4px; padding: 4px 6px; font-family: "ViceSans", sans-serif; font-size: 12px; width: 100%; }
+.field input[type="text"]:focus { outline: 1px solid #ff4d8d; }
+.sec.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.export-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.export-row .btn { padding: 7px 2px; }
+/* shot mode: cover fills the viewport, chrome hidden */
+body.shot-cover { overflow: hidden; }
+body.shot-cover #app { height: 100vh; }
+body.shot-cover .topbar, body.shot-cover .hint, body.shot-cover .stage-foot, body.shot-cover .panel { display: none !important; }
+body.shot-cover .workspace { padding: 0; gap: 0; }
+body.shot-cover .stage { gap: 0; }
+body.shot-cover .cover-wrap { border: 0; border-radius: 0; }
+body.shot-cover .cover-wrap canvas { width: 100vw; height: 100vh; object-fit: fill; }

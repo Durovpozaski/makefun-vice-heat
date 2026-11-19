@@ -8,6 +8,8 @@ Turn a photo and a caption into GTA 6 style poster cover art, in your browser, o
 
 The cover is full-bleed photos with a huge italic gold title over the lower photos, stars and a press quote above it, a starburst, VOL. 06 and EST. 2026 stickers, a WANTED badge, story labels on every panel and a thin bottom strip with its own barcode zone.
 
+v6 rebuild notes: the title now fits the frame with room for its skew and purple 3D shadow, and the quote pill is skipped on the nine-panels grid so no story label is ever covered.
+
 ## Run it
 
 ```sh
