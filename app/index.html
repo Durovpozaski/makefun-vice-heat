@@ -7,87 +7,77 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand"><span class="brand-badge">VH</span><span class="brand-name">VICE HEAT</span><span class="brand-sub">COVER STUDIO</span></div>
-  <div class="steps"><span class="step"><b>1</b> ADD PHOTOS</span><span class="step"><b>2</b> PICK A SIZE</span><span class="step"><b>3</b> EXPORT PNG</span></div>
+<header>
+  <div class="brand"><span class="logo">VH</span><h1>VICE HEAT <span>COVER STUDIO</span></h1></div>
+  <ol class="steps"><li><b>1</b> ADD PHOTOS</li><li><b>2</b> PICK A SIZE</li><li><b>3</b> EXPORT PNG</li></ol>
   <div class="top-actions">
-    <button id="addPhotosTop" class="btn btn-ghost">+ ADD PHOTOS</button>
-    <button id="exportAllTop" class="btn btn-pink">EXPORT ALL 3 SIZES</button>
+    <button id="addPhotosBtn">+ ADD PHOTOS</button>
+    <button id="exportAllTopBtn" class="primary">EXPORT ALL 3 SIZES</button>
   </div>
+  <input type="file" id="fileInput" accept="image/*" multiple hidden>
 </header>
-<main class="studio">
-  <aside class="rail left">
+<main>
+  <aside id="left">
     <section>
-      <h2>PHOTOS <span id="photoCount" class="muted">0 LOADED</span></h2>
+      <h2>PHOTOS <span id="photoCount">8 LOADED</span></h2>
       <p class="hint">Drop photos here or use Add photos. One photo fills every panel with different crops; several are spread across panels.</p>
-      <div id="photoGrid" class="photo-grid"></div>
-      <button id="addPhotos" class="btn btn-outline wide">+ ADD PHOTOS</button>
-      <input id="photoInput" type="file" accept="image/*" multiple hidden>
+      <div id="photoGrid"></div>
+      <button id="addPhotosBtn2">+ ADD PHOTOS</button>
     </section>
     <section>
-      <h2>PANEL <span id="panelLabel" class="muted">1 OF 3</span></h2>
-      <div id="panelButtons" class="panel-buttons"></div>
-      <label class="slider-label">ZOOM <span id="zoomVal">1.0&times;</span></label>
-      <input id="zoomRange" type="range" min="1" max="3" step="0.05" value="1">
-      <button id="autoCrop" class="btn btn-outline wide">AUTO CENTER CROP</button>
-      <button id="replacePhoto" class="btn btn-outline wide">REPLACE PHOTO&hellip;</button>
-      <button id="fillAll" class="btn btn-outline wide">FILL ALL PANELS FROM THIS PHOTO</button>
-      <button id="spreadAll" class="btn btn-outline wide">SPREAD ALL PHOTOS ACROSS PANELS</button>
-      <label class="check"><input id="faceSafeChk" type="checkbox" checked> FACE-SAFE BOX (skin-safe)</label>
+      <h2>PANEL <span id="panelLabel">1 OF 6</span></h2>
+      <div id="panelButtons"></div>
+      <label class="row">ZOOM <span id="zoomVal">1.0&times;</span></label>
+      <input type="range" id="zoomSlider" min="1" max="3" step="0.05" value="1">
+      <button id="autoCenterBtn">AUTO CENTER CROP</button>
+      <button id="replaceBtn">REPLACE PHOTO&hellip;</button>
+      <button id="fillAllBtn">FILL ALL PANELS FROM THIS PHOTO</button>
+      <button id="spreadBtn">SPREAD ALL PHOTOS ACROSS PANELS</button>
+      <label class="check"><input type="checkbox" id="faceSafeChk" checked> FACE-SAFE BOX (skin-safe grading)</label>
       <p class="hint">Drag a panel in the preview to pan &middot; scroll to zoom &middot; double-click to re-center &middot; drag the cyan face box to move it.</p>
     </section>
   </aside>
-
-  <section class="center">
-    <div class="size-row">
-      <button class="size-btn active" data-size="1920x1080">1920 &times; 1080 <span>LANDSCAPE</span></button>
-      <button class="size-btn" data-size="1080x1350">1080 &times; 1350 <span>PORTRAIT</span></button>
-      <button class="size-btn" data-size="1080x1080">1080 &times; 1080 <span>SQUARE</span></button>
+  <section id="center">
+    <div id="sizePicker">
+      <button data-size="1920x1080" class="on">1920 &times; 1080 <small>LANDSCAPE</small></button>
+      <button data-size="1080x1350">1080 &times; 1350 <small>PORTRAIT</small></button>
+      <button data-size="1080x1080">1080 &times; 1080 <small>SQUARE</small></button>
     </div>
-    <div class="preview-wrap"><canvas id="preview" width="960" height="540"></canvas></div>
-    <div class="gta-bar">
-      <label class="check"><input id="wantedChk" type="checkbox" checked> WANTED</label>
-      <label class="mini">STARS <input id="starsRange" type="range" min="1" max="5" step="1" value="5"><span id="starsVal">5</span></label>
-      <label class="mini">VOL. <input id="volInput" type="text" value="VOL. 06" size="7"></label>
-      <label class="check"><input id="estChk" type="checkbox" checked> EST. 2026 SEAL</label>
-      <label class="mini grow">PLACE <input id="placeInput" type="text" value="OCEAN DRIVE"></label>
-      <label class="mini grow">SUB-LINE <input id="subInput" type="text" value="6:42 PM — LOOKING FOR TROUBLE"></label>
+    <div id="previewWrap"><canvas id="preview"></canvas></div>
+    <div id="gtaBar">
+      <label class="check"><input type="checkbox" id="wantedChk" checked> WANTED</label>
+      <label>STARS <input type="range" id="starsSlider" min="1" max="5" step="1" value="5"></label>
+      <label>VOL. <input type="text" id="volInput" value="VOL. 06"></label>
+      <label class="check"><input type="checkbox" id="sealChk" checked> EST. 2026 SEAL</label>
+      <label>PLACE <input type="text" id="placeInput" value="OCEAN DRIVE"></label>
+      <label>SUB-LINE <input type="text" id="subInput" value="6:42 PM &mdash; LOOKING FOR TROUBLE"></label>
     </div>
-    <div class="export-row">
-      <button id="exportPng" class="btn btn-amber">EXPORT PNG 1920 &times; 1080</button>
-      <button id="exportAll" class="btn btn-pink">EXPORT ALL 3 SIZES</button>
-      <button id="surpriseBtn" class="btn btn-dark">SURPRISE ME</button>
-      <span id="savedMsg" class="muted"></span>
+    <div id="exportRow">
+      <button id="exportBtn" class="primary">EXPORT PNG 1920 &times; 1080</button>
+      <button id="exportAllBtn" class="primary">EXPORT ALL 3 SIZES</button>
+      <button id="surpriseBtn">SURPRISE ME</button>
+      <span id="savedMsg"></span>
     </div>
   </section>
-
-  <aside class="rail right">
-    <section>
-      <h2>LAYOUT</h2>
-      <div id="layoutBtns" class="grid3"></div>
-    </section>
-    <section>
-      <h2>GRADE</h2>
-      <div id="gradeBtns" class="grid3"></div>
-    </section>
-    <section>
-      <h2>PAINTERLY ENGINE</h2>
-      <label class="slider-label">PAINTERLY ART <span id="painterlyVal">70</span></label>
-      <input id="painterlyRange" type="range" min="0" max="100" step="1" value="70">
-      <label class="slider-label">INK CONTOURS <span id="inkVal">55</span></label>
-      <input id="inkRange" type="range" min="0" max="100" step="1" value="55">
-      <label class="slider-label">HALFTONE PRINT <span id="halftoneVal">30</span></label>
-      <input id="halftoneRange" type="range" min="0" max="100" step="1" value="30">
-      <label class="slider-label">KEEP SKIN NATURAL <span id="skinVal">70</span></label>
-      <input id="skinRange" type="range" min="0" max="100" step="1" value="70">
+  <aside id="right">
+    <section><h2>LAYOUT</h2><div id="layoutGrid"></div></section>
+    <section><h2>GRADE</h2><div id="gradeGrid"></div></section>
+    <section><h2>PAINTERLY ENGINE</h2>
+      <label class="row">PAINTERLY ART <span id="painterlyVal">10</span></label>
+      <input type="range" id="painterlySlider" min="0" max="100" value="10">
+      <label class="row">INK CONTOURS <span id="inkVal">15</span></label>
+      <input type="range" id="inkSlider" min="0" max="100" value="15">
+      <label class="row">HALFTONE PRINT <span id="halftoneVal">0</span></label>
+      <input type="range" id="halftoneSlider" min="0" max="100" value="0">
+      <label class="row">KEEP SKIN NATURAL <span id="skinVal">70</span></label>
+      <input type="range" id="skinSlider" min="0" max="100" value="70">
       <p class="hint">Painterly turns photos into illustration. Keep skin natural softens the effect inside the face box.</p>
     </section>
-    <section>
-      <h2>CAPTION</h2>
-      <label class="field">TITLE <input id="titleInput" type="text" value="VICE HEAT"></label>
-      <label class="field">SUBTITLE <input id="subtitleInput" type="text" value="Leonida"></label>
-      <label class="field">TAGLINE <input id="taglineInput" type="text" value="WELCOME TO LEONIDA — SUMMER 2026"></label>
-      <label class="field">QUOTE <input id="quoteInput" type="text" value="PURE ADRENALINE IN EVERY FRAME"></label>
+    <section><h2>CAPTION</h2>
+      <label>TITLE <input type="text" id="titleInput" value="VICE HEAT"></label>
+      <label>SUBTITLE <input type="text" id="subtitleInput" value="Leonida"></label>
+      <label>TAGLINE <input type="text" id="taglineInput" value="WELCOME TO LEONIDA &mdash; SUMMER 2026"></label>
+      <label>QUOTE <input type="text" id="quoteInput" value="PURE ADRENALINE IN EVERY FRAME"></label>
     </section>
   </aside>
 </main>
