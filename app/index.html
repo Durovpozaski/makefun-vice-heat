@@ -3,20 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cover Snap</title>
+<title>VICE HEAT Cover Studio</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<main class="app">
-  <section class="controls">
-    <h1>Cover Snap</h1>
-    <p>A photo and a caption, made into a square cover.</p>
-    <label>Photo <input id="photo" type="file" accept="image/*"></label>
-    <label>Caption <input id="caption" type="text" maxlength="40" value="Sunset Heist"></label>
-    <button id="export" type="button">Export PNG 1080 x 1080</button>
-    <p id="status" role="status"></p>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">VH</span> VICE HEAT <span class="brand-sub">COVER STUDIO</span></div>
+  <nav class="steps"><span><b>1</b> ADD PHOTOS</span><span><b>2</b> PICK A SIZE</span><span><b>3</b> EXPORT PNG</span></nav>
+  <div class="top-actions">
+    <button id="add-photos-top" type="button" class="btn ghost">+ ADD PHOTOS</button>
+    <button id="export-all-top" type="button" class="btn pink">EXPORT ALL 3 SIZES</button>
+  </div>
+</header>
+<main class="studio">
+  <aside class="rail left">
+    <section>
+      <h2>PHOTOS <span id="photo-count" class="count">8 LOADED</span></h2>
+      <p class="hint">Drop photos here or use Add photos. One photo fills every panel with different crops; several are spread across panels.</p>
+      <div id="photo-grid" class="thumbs"></div>
+      <button id="add-photo" type="button" class="btn ghost wide">+ ADD PHOTOS</button>
+      <input id="photo-input" type="file" accept="image/*" multiple hidden>
+    </section>
+    <section>
+      <h2>PANEL <span id="panel-count" class="count">1 OF 6</span></h2>
+      <div id="panel-buttons" class="minis"></div>
+      <label class="slider-row">ZOOM <input id="zoom" type="range" min="1" max="3" step="0.1" value="1"><span id="zoom-val">1.0×</span></label>
+      <div class="btn-col">
+        <button id="btn-center" type="button" class="btn dark">AUTO CENTER CROP</button>
+        <button id="btn-replace" type="button" class="btn dark">REPLACE PHOTO…</button>
+        <button id="btn-fill" type="button" class="btn dark">FILL ALL PANELS FROM THIS PHOTO</button>
+        <button id="btn-spread" type="button" class="btn dark">SPREAD ALL PHOTOS ACROSS PANELS</button>
+      </div>
+      <label class="check"><input id="face-toggle" type="checkbox" checked> FACE-SAFE BOX (skin-safe grading)</label>
+      <p class="hint">Drag a panel in the preview to pan · scroll to zoom · double-click to re-center · drag the cyan FACE box to move it.</p>
+    </section>
+  </aside>
+  <section class="center">
+    <div id="size-picker" class="sizes">
+      <button type="button" data-w="1920" data-h="1080" class="active">1920 × 1080 <span>LANDSCAPE</span></button>
+      <button type="button" data-w="1080" data-h="1350">1080 × 1350 <span>PORTRAIT</span></button>
+      <button type="button" data-w="1080" data-h="1080">1080 × 1080 <span>SQUARE</span></button>
+    </div>
+    <div class="preview-wrap">
+      <canvas id="preview" width="960" height="540" aria-label="Cover preview"></canvas>
+    </div>
+    <div class="export-row">
+      <button id="export-png" type="button" class="btn amber">EXPORT PNG 1920 × 1080</button>
+      <button id="export-all" type="button" class="btn pink">EXPORT ALL 3 SIZES</button>
+      <button id="surprise" type="button" class="btn dark">SURPRISE ME</button>
+      <p id="status" role="status"></p>
+    </div>
   </section>
-  <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
+  <aside class="rail right">
+    <section>
+      <h2>LAYOUT</h2>
+      <div id="layout-grid" class="picks"></div>
+    </section>
+    <section>
+      <h2>GRADE</h2>
+      <div id="grade-grid" class="picks"></div>
+      <label class="slider-row">STRENGTH <input id="s-strength" type="range" min="0" max="1" step="0.01" value="0.9"><span id="s-strength-val">0.90</span></label>
+      <label class="slider-row">CONTRAST <input id="s-contrast" type="range" min="0" max="1" step="0.01" value="0.06"><span id="s-contrast-val">0.06</span></label>
+      <label class="slider-row">SATURATION <input id="s-saturation" type="range" min="0" max="1" step="0.01" value="0.06"><span id="s-saturation-val">0.06</span></label>
+      <label class="slider-row">GRAIN <input id="s-grain" type="range" min="0" max="1" step="0.01" value="0.28"><span id="s-grain-val">0.28</span></label>
+      <label class="slider-row">VIGNETTE <input id="s-vignette" type="range" min="0" max="1" step="0.01" value="0.5"><span id="s-vignette-val">0.50</span></label>
+      <label class="check"><input id="halftone-toggle" type="checkbox" checked> HALFTONE PRINT DOTS</label>
+    </section>
+    <section>
+      <h2>CAPTION</h2>
+      <label>TITLE <input id="in-title" type="text" maxlength="24" value="VICE HEAT"></label>
+      <label>SUBTITLE <input id="in-subtitle" type="text" maxlength="24" value="Leonida"></label>
+      <label>TAGLINE <input id="in-tagline" type="text" maxlength="48" value="WELCOME TO LEONIDA — SUMMER 2026"></label>
+      <label>PRESS QUOTE <input id="in-quote" type="text" maxlength="48" value="PURE ADRENALINE IN EVERY FRAME"></label>
+    </section>
+  </aside>
 </main>
 <script type="module" src="./src/main.js"></script>
 </body>
